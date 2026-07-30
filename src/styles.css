@@ -23,8 +23,8 @@ button { font: inherit; }
   position: relative;
   overflow-x: hidden;
   background:
-    linear-gradient(180deg, rgba(0, 7, 5, 0.50), rgba(0, 7, 5, 0.76)),
-    var(--hero-image) center / cover fixed;
+    linear-gradient(180deg, rgba(0, 5, 3, 0.34), rgba(0, 7, 5, 0.66)),
+    var(--hero-image) 50% center / cover fixed;
 }
 
 .site::before {
@@ -33,9 +33,9 @@ button { font: inherit; }
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 8, 5, 0.42) 58%, rgba(0, 5, 3, 0.72)),
-    radial-gradient(circle at 50% 12%, rgba(17, 55, 39, 0.10), transparent 34%),
-    linear-gradient(90deg, rgba(0, 7, 5, 0.38), transparent 26%, transparent 74%, rgba(0, 7, 5, 0.38));
+    linear-gradient(180deg, rgba(0, 0, 0, 0.16), rgba(0, 8, 5, 0.26) 50%, rgba(0, 5, 3, 0.68)),
+    radial-gradient(circle at 50% 6%, rgba(213, 173, 97, 0.04), transparent 30%),
+    linear-gradient(90deg, rgba(0, 5, 3, 0.40), transparent 28%, transparent 72%, rgba(0, 5, 3, 0.40));
 }
 
 .home-content {
@@ -47,7 +47,7 @@ button { font: inherit; }
   padding: max(22px, env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 14px;
 }
 
@@ -55,8 +55,8 @@ button { font: inherit; }
   display: grid;
   justify-items: center;
   gap: 3px;
-  width: min(88%, 470px);
-  margin: 0 auto 4px;
+  width: min(82%, 430px);
+  margin: 4px auto 18px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -67,11 +67,10 @@ button { font: inherit; }
 .brand-logo {
   display: block;
   width: 100%;
-  max-height: 168px;
+  max-height: 142px;
   object-fit: contain;
-  mix-blend-mode: screen;
-  filter: sepia(0.36) saturate(0.82) brightness(0.98) contrast(1.05);
-  opacity: 0.93;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35)) sepia(0.12) saturate(0.92) brightness(0.96);
+  opacity: 0.84;
 }
 
 .brand-hint {
@@ -81,7 +80,7 @@ button { font: inherit; }
   text-transform: uppercase;
 }
 
-.home-menu { display: grid; gap: 10px; }
+.home-menu { display: grid; gap: 10px; margin-top: auto; margin-bottom: min(7vh, 54px); }
 
 .home-card {
   width: 100%;
@@ -93,10 +92,10 @@ button { font: inherit; }
   padding: 14px 18px;
   border: 1px solid rgba(214, 178, 105, 0.38);
   border-radius: 19px;
-  background: rgba(2, 22, 15, 0.82);
+  background: rgba(2, 18, 13, 0.76);
   color: var(--gold-light);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(9px);
+  backdrop-filter: blur(7px);
   text-align: left;
   cursor: pointer;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
@@ -193,6 +192,22 @@ button { font: inherit; }
 .venue-details > * { display: grid; gap: 5px; padding: 14px 2px; border-bottom: 1px solid rgba(216, 179, 106, 0.16); color: inherit; text-decoration: none; }
 .venue-details span { color: rgba(235, 225, 203, 0.42); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; }
 .venue-details strong { color: var(--gold-light); font-size: 14px; font-weight: 450; line-height: 1.45; }
+
+@media (max-width: 640px) {
+  .site {
+    background-attachment: scroll;
+    background-position: 51% center;
+  }
+
+  .home-content {
+    padding-top: max(18px, env(safe-area-inset-top));
+  }
+
+  .brand-trigger {
+    width: min(78%, 360px);
+    margin-bottom: 12px;
+  }
+}
 
 .inner-page { background-position: center top; }
 .inner-page::after {

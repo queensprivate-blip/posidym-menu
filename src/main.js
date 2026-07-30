@@ -1,6 +1,6 @@
 import './styles.css';
-import backgroundUrl from './lounge-background-original.jpg';
-import logoUrl from './posidym-logo.png';
+import backgroundUrl from './lounge-background-premium.webp';
+import logoUrl from './posidym-logo-premium.png';
 
 const app = document.querySelector('#app');
 
