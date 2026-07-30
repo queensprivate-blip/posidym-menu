@@ -200,7 +200,6 @@ function home() {
     <section class="home-content">
       <button class="brand-trigger" type="button" data-venue-open aria-label="Открыть информацию о заведении">
         <img class="brand-logo" src="${logoUrl}" alt="Посидым Lounge">
-        <span class="brand-hint">Информация о заведении</span>
       </button>
 
       <nav class="home-menu" aria-label="Разделы меню">
