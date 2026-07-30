@@ -1,5 +1,5 @@
 import './styles.css';
-import backgroundUrl from './lounge-background.png';
+import backgroundUrl from './lounge-background-original.jpg';
 import logoUrl from './posidym-logo.png';
 
 const app = document.querySelector('#app');
@@ -153,6 +153,17 @@ function bindRoutes() {
     if (window.history.length > 1) window.history.back();
     else setRoute('#home');
   });
+
+  const venueDialog = document.querySelector('#venue-dialog');
+  document.querySelector('[data-venue-open]')?.addEventListener('click', () => {
+    venueDialog?.showModal();
+  });
+  document.querySelector('[data-venue-close]')?.addEventListener('click', () => {
+    venueDialog?.close();
+  });
+  venueDialog?.addEventListener('click', (event) => {
+    if (event.target === venueDialog) venueDialog.close();
+  });
 }
 
 function shell(content, { home = false, title = '', eyebrow = '' } = {}) {
@@ -187,18 +198,38 @@ function homeCard(title, route, type, subtitle) {
 function home() {
   shell(`
     <section class="home-content">
-      <img class="brand-logo" src="${logoUrl}" alt="Посидым Lounge">
+      <button class="brand-trigger" type="button" data-venue-open aria-label="Открыть информацию о заведении">
+        <img class="brand-logo" src="${logoUrl}" alt="Посидым Lounge">
+        <span class="brand-hint">Информация о заведении</span>
+      </button>
+
       <nav class="home-menu" aria-label="Разделы меню">
         ${homeCard('Бар', '#bar', 'bar', 'Коктейли, напитки и чай')}
         ${homeCard('Кальяны', '#hookah', 'hookah', 'Вкусы, чаши и дополнения')}
         ${homeCard('Акции и правила', '#info', 'info', 'Предложения и важная информация')}
       </nav>
-      <section class="venue-card" aria-label="Контакты заведения">
-        <p><span>⌖</span><a href="https://maps.google.com/?q=${encodeURIComponent(venue.address)}">${esc(venue.address)}</a></p>
-        <p><span>☎</span><a href="tel:${venue.phone.replace(/[^+\d]/g, '')}">${esc(venue.phone)}</a></p>
-        <div></div>
-        <p><span>◷</span><strong>${esc(venue.hours)}</strong></p>
-      </section>
+
+      <dialog class="venue-dialog" id="venue-dialog" aria-labelledby="venue-dialog-title">
+        <div class="venue-dialog-card">
+          <button class="venue-dialog-close" type="button" data-venue-close aria-label="Закрыть">×</button>
+          <img class="venue-dialog-logo" src="${logoUrl}" alt="">
+          <div class="venue-dialog-heading">
+            <span>Кальянная и бар</span>
+            <h2 id="venue-dialog-title">Посидым Lounge</h2>
+          </div>
+          <div class="venue-details">
+            <a href="https://maps.google.com/?q=${encodeURIComponent(venue.address)}">
+              <span>Адрес</span><strong>${esc(venue.address)}</strong>
+            </a>
+            <a href="tel:${venue.phone.replace(/[^+\d]/g, '')}">
+              <span>Телефон</span><strong>${esc(venue.phone)}</strong>
+            </a>
+            <div>
+              <span>Режим работы</span><strong>${esc(venue.hours)}</strong>
+            </div>
+          </div>
+        </div>
+      </dialog>
     </section>`, { home: true });
 }
 
