@@ -1,6 +1,12 @@
 import './styles.css';
 import backgroundUrl from './lounge-background-premium.webp';
 import logoUrl from './posidym-logo-premium.png';
+import hookahClassicUrl from './hookah-images/classic.webp';
+import hookahGrapefruitUrl from './hookah-images/grapefruit.webp';
+import hookahAuthorUrl from './hookah-images/author.webp';
+import hookahElectroUrl from './hookah-images/electro.webp';
+import hookahExclusiveUrl from './hookah-images/exclusive.webp';
+import hookahPremiumUrl from './hookah-images/premium.webp';
 
 const app = document.querySelector('#app');
 
@@ -102,6 +108,46 @@ const menuData = {
   },
 };
 
+
+const hookahItems = [
+  {
+    name: 'Классический кальян',
+    description: 'Традиционная подача и мягкий, сбалансированный вкус.',
+    price: 2150,
+    image: hookahClassicUrl,
+  },
+  {
+    name: 'На грейпфруте',
+    description: 'Сочная цитрусовая подача с более ярким ароматом.',
+    price: 2600,
+    image: hookahGrapefruitUrl,
+  },
+  {
+    name: 'Авторский',
+    description: 'Фирменное сочетание вкусов и особая подача от мастера.',
+    price: 2800,
+    image: hookahAuthorUrl,
+  },
+  {
+    name: 'Электронная чаша',
+    description: 'Современный нагрев, стабильный вкус и чистая подача.',
+    price: 3000,
+    image: hookahElectroUrl,
+  },
+  {
+    name: 'Эксклюзивный',
+    description: 'Премиальная подача, редкие сочетания и максимум внимания к деталям.',
+    price: 3500,
+    image: hookahExclusiveUrl,
+  },
+  {
+    name: 'Добавка премиум табаков',
+    description: 'Дополнение к выбранному кальяну премиальными линейками табака.',
+    price: 450,
+    image: hookahPremiumUrl,
+  },
+];
+
 const promotions = [
   {
     type: 'Акция',
@@ -163,6 +209,55 @@ function bindRoutes() {
   });
   venueDialog?.addEventListener('click', (event) => {
     if (event.target === venueDialog) venueDialog.close();
+  });
+}
+
+
+function initHookahCarousel() {
+  const track = document.querySelector('[data-hookah-track]');
+  const dots = [...document.querySelectorAll('[data-hookah-dot]')];
+  if (!track || !dots.length) return;
+
+  const slides = [...track.querySelectorAll('.hookah-slide')];
+  let frame = 0;
+
+  const setActive = (index) => {
+    dots.forEach((dot, dotIndex) => {
+      const active = dotIndex === index;
+      dot.classList.toggle('is-active', active);
+      dot.setAttribute('aria-current', active ? 'true' : 'false');
+    });
+  };
+
+  const nearestSlide = () => {
+    const trackCenter = track.scrollLeft + track.clientWidth / 2;
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    slides.forEach((slide, index) => {
+      const center = slide.offsetLeft + slide.offsetWidth / 2;
+      const distance = Math.abs(center - trackCenter);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+    setActive(bestIndex);
+  };
+
+  track.addEventListener('scroll', () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(nearestSlide);
+  }, { passive: true });
+
+  dots.forEach((dot, index) => {
+    dot.addEventListener('click', () => {
+      slides[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    });
+  });
+
+  requestAnimationFrame(() => {
+    slides[0]?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    setActive(0);
   });
 }
 
@@ -285,6 +380,31 @@ function categoryPage(sectionKey, categoryId) {
     </section>`, { title: category.title, eyebrow: section.title });
 }
 
+
+function hookahPage() {
+  shell(`
+    <section class="hookah-page" aria-label="Меню кальянов">
+      <p class="hookah-intro">Листайте карточки свайпом и выбирайте подходящую подачу.</p>
+      <div class="hookah-carousel" data-hookah-track>
+        ${hookahItems.map((item) => `
+          <article class="hookah-slide" style="--hookah-image:url('${item.image}')">
+            <div class="hookah-slide-copy">
+              <h2>${esc(item.name)}</h2>
+              <span class="hookah-divider" aria-hidden="true"></span>
+              <p>${esc(item.description)}</p>
+              <strong>${money(item.price)}</strong>
+            </div>
+          </article>`).join('')}
+      </div>
+      <div class="hookah-dots" aria-label="Выбор позиции">
+        ${hookahItems.map((item, index) => `
+          <button type="button" data-hookah-dot class="hookah-dot${index === 0 ? ' is-active' : ''}" aria-label="${esc(item.name)}" aria-current="${index === 0 ? 'true' : 'false'}"></button>`).join('')}
+      </div>
+      <p class="hookah-note">Крепость и вкусовой профиль можно подобрать вместе с кальянным мастером.</p>
+    </section>`, { title: 'Кальяны' });
+  initHookahCarousel();
+}
+
 function infoPage() {
   shell(`
     <section class="inner-content">
@@ -339,9 +459,9 @@ function route() {
   const [section, category] = clean.split('/');
 
   if (section === 'bar' && category) return categoryPage('bar', category);
-  if (section === 'hookah' && category) return categoryPage('hookah', category);
+  if (section === 'hookah' && category) return hookahPage();
   if (section === 'bar') return menuOverview('bar');
-  if (section === 'hookah') return menuOverview('hookah');
+  if (section === 'hookah') return hookahPage();
   if (section === 'info') return infoPage();
   if (section === 'home' || !section) return home();
   return notFound();
