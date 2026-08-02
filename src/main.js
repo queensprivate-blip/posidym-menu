@@ -8,6 +8,7 @@ import hookahElectroUrl from './hookah-images/electro.webp';
 import hookahExclusiveUrl from './hookah-images/exclusive.webp';
 import hookahPremiumUrl from './hookah-images/premium.webp';
 import { barCategories, importedPromotions } from './menu-data.js';
+import { supabase } from './supabase-client.js';
 
 const app = document.querySelector('#app');
 
@@ -52,6 +53,12 @@ const groupedBarCategories = [
     sections: [categoryById['futdsvldkq'], categoryById['bifsxyjojt'], categoryById['hijuf-uq-n']].filter(Boolean),
   },
 ];
+
+function remoteKey(type, section, name) {
+  const slug = String(name).toLowerCase().replace(/[^a-zа-я0-9]+/gi, '-').replace(/^-|-$/g, '');
+  return `${type}:${section}:${slug}`;
+}
+barCategories.forEach((category) => category.items.forEach((item) => { item.remoteKey = remoteKey('bar', category.id, item.name); }));
 
 const menuData = {
   bar: {
@@ -100,6 +107,7 @@ const hookahItems = [
     image: hookahPremiumUrl,
   },
 ];
+hookahItems.forEach((item) => { item.remoteKey = remoteKey('hookah', 'hookah', item.name); });
 
 const promotions = importedPromotions;
 
@@ -122,8 +130,9 @@ const money = (value) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`;
 
 const CHOICE_STORAGE_KEY = 'posidym-choice-v1';
 const ADMIN_STORAGE_KEY = 'posidym-admin-overrides-v1';
-const ADMIN_SESSION_KEY = 'posidym-admin-session-v1';
-const ADMIN_DEMO_PIN = '2408';
+let remoteMenuItems = new Map();
+let adminSession = null;
+let backendStatus = 'loading';
 
 
 function readAdminOverrides() {
@@ -140,12 +149,15 @@ function writeAdminOverrides(value) {
 }
 
 function effectiveItem(item) {
-  const id = choiceId(item);
-  const override = readAdminOverrides()[id] || {};
+  const remote = remoteMenuItems.get(item.remoteKey) || {};
+  const local = readAdminOverrides()[choiceId(item)] || {};
   return {
     ...item,
-    price: Number.isFinite(Number(override.price)) ? Number(override.price) : item.price,
-    hidden: override.hidden === true,
+    name: remote.name ?? item.name,
+    description: remote.description ?? item.description,
+    price: Number.isFinite(Number(remote.price)) ? Number(remote.price) : (Number.isFinite(Number(local.price)) ? Number(local.price) : item.price),
+    image: remote.image_url || item.image,
+    hidden: remote.available === false || local.hidden === true,
   };
 }
 
@@ -158,9 +170,7 @@ function allEditableItems() {
   return result;
 }
 
-function isAdminAuthenticated() {
-  return sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
-}
+function isAdminAuthenticated() { return Boolean(adminSession?.user); }
 
 function choiceId(item) {
   const source = item.image || `${item.name}-${item.price}`;
@@ -258,55 +268,45 @@ function bindRoutes() {
   });
 
 
-  document.querySelector('[data-admin-login]')?.addEventListener('submit', (event) => {
+  document.querySelector('[data-admin-login]')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const pin = String(form.get('pin') || '');
-    const error = document.querySelector('[data-admin-error]');
-    if (pin === ADMIN_DEMO_PIN) {
-      sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
-      adminPage();
-    } else if (error) {
-      error.hidden = false;
+    const email = String(form.get('email') || '').trim();
+    const password = String(form.get('password') || '');
+    const errorNode = document.querySelector('[data-admin-error]');
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      if (errorNode) { errorNode.textContent = error.message; errorNode.hidden = false; }
+      return;
     }
+    adminSession = data.session;
+    adminPage();
   });
 
-  document.querySelector('[data-admin-logout]')?.addEventListener('click', () => {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  document.querySelector('[data-admin-logout]')?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    adminSession = null;
     adminPage();
   });
 
   document.querySelectorAll('[data-admin-save]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const overrides = readAdminOverrides();
-      document.querySelectorAll('[data-admin-item]').forEach((row) => {
-        const id = row.dataset.adminItem;
-        const price = Number(row.querySelector('[data-admin-price]')?.value || 0);
-        const available = Boolean(row.querySelector('[data-admin-available]')?.checked);
-        overrides[id] = { price: Math.max(0, price), hidden: !available };
-      });
-      writeAdminOverrides(overrides);
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const updates = [...document.querySelectorAll('[data-admin-item]')].map((row) => ({
+        item_key: row.dataset.adminItem,
+        price: Math.max(0, Number(row.querySelector('[data-admin-price]')?.value || 0)),
+        available: Boolean(row.querySelector('[data-admin-available]')?.checked),
+        updated_at: new Date().toISOString(),
+      }));
+      const { error } = await supabase.from('menu_items').upsert(updates, { onConflict: 'item_key' });
       const status = document.querySelector('[data-admin-status]');
       if (status) {
-        status.textContent = 'Изменения сохранены на этом устройстве';
+        status.textContent = error ? `Ошибка: ${error.message}` : 'Изменения сохранены и доступны всем гостям';
         status.hidden = false;
       }
+      if (!error) await loadRemoteMenu();
+      button.disabled = false;
     });
-  });
-
-  document.querySelector('[data-admin-reset]')?.addEventListener('click', () => {
-    localStorage.removeItem(ADMIN_STORAGE_KEY);
-    adminPage();
-  });
-
-  document.querySelector('[data-admin-export]')?.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(readAdminOverrides(), null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'posidym-menu-overrides.json';
-    link.click();
-    URL.revokeObjectURL(url);
   });
 
   const venueDialog = document.querySelector('#venue-dialog');
@@ -715,67 +715,37 @@ function adminPage() {
     shell(`
       <section class="admin-login-wrap">
         <form class="admin-login-card" data-admin-login>
-          <span>Управление меню</span>
+          <span>Защищённое управление</span>
           <h2>Вход в админку</h2>
-          <p>Введите временный PIN-код администратора.</p>
-          <label>
-            <span>PIN-код</span>
-            <input name="pin" inputmode="numeric" autocomplete="one-time-code" required maxlength="8">
-          </label>
-          <p class="admin-error" data-admin-error hidden>Неверный PIN-код</p>
+          <label><span>Email</span><input name="email" type="email" autocomplete="username" required></label>
+          <label><span>Пароль</span><input name="password" type="password" autocomplete="current-password" required></label>
+          <p class="admin-error" data-admin-error hidden></p>
           <button type="submit">Войти</button>
-          <small>Локальная версия. Для защищённого входа с разных устройств потребуется Supabase.</small>
+          <small>Вход выполняется через Supabase Auth.</small>
         </form>
       </section>`, { title: 'Админка' });
     return;
   }
 
-  const overrides = readAdminOverrides();
   const rows = allEditableItems().map(({ section, type, item }) => {
-    const id = choiceId(item);
-    const override = overrides[id] || {};
-    const price = Number.isFinite(Number(override.price)) ? Number(override.price) : item.price;
-    const available = override.hidden !== true;
+    const current = effectiveItem(item);
     return `
-      <article class="admin-item" data-admin-item="${esc(id)}">
-        ${item.image ? `<img src="${esc(item.image)}" alt="" loading="lazy">` : '<span class="admin-item-placeholder"></span>'}
-        <div class="admin-item-copy">
-          <small>${esc(type)} · ${esc(section)}</small>
-          <strong>${esc(item.name)}</strong>
-        </div>
-        <label class="admin-price-field">
-          <span>Цена</span>
-          <input type="number" min="0" step="10" value="${esc(price)}" data-admin-price>
-        </label>
-        <label class="admin-switch">
-          <input type="checkbox" data-admin-available ${available ? 'checked' : ''}>
-          <span>В меню</span>
-        </label>
+      <article class="admin-item" data-admin-item="${esc(item.remoteKey)}">
+        ${current.image ? `<img src="${esc(current.image)}" alt="" loading="lazy">` : '<span class="admin-item-placeholder"></span>'}
+        <div class="admin-item-copy"><small>${esc(type)} · ${esc(section)}</small><strong>${esc(current.name)}</strong></div>
+        <label class="admin-price-field"><span>Цена</span><input type="number" min="0" step="10" value="${esc(current.price)}" data-admin-price></label>
+        <label class="admin-switch"><input type="checkbox" data-admin-available ${current.hidden ? '' : 'checked'}><span>В меню</span></label>
       </article>`;
   }).join('');
 
   shell(`
     <section class="inner-content admin-page">
-      <div class="admin-toolbar">
-        <div>
-          <span>Локальная версия</span>
-          <h2>Позиции и стоп-лист</h2>
-        </div>
-        <button type="button" data-admin-logout>Выйти</button>
-      </div>
-      <div class="admin-notice">
-        Изменения сохраняются только в браузере этого устройства. Публичный сайт на других телефонах пока не изменится.
-      </div>
-      <div class="admin-actions">
-        <button type="button" class="admin-primary" data-admin-save>Сохранить изменения</button>
-        <button type="button" data-admin-export>Скачать резервную копию</button>
-        <button type="button" data-admin-reset>Сбросить изменения</button>
-      </div>
+      <div class="admin-toolbar"><div><span>Supabase подключён</span><h2>Цены и стоп-лист</h2></div><button type="button" data-admin-logout>Выйти</button></div>
+      <div class="admin-notice">Изменения сохраняются в общей базе и отображаются у всех гостей после обновления меню.</div>
+      <div class="admin-actions"><button type="button" class="admin-primary" data-admin-save>Сохранить изменения</button></div>
       <p class="admin-status" data-admin-status hidden></p>
       <div class="admin-list">${rows}</div>
-      <div class="admin-actions admin-actions-bottom">
-        <button type="button" class="admin-primary" data-admin-save>Сохранить изменения</button>
-      </div>
+      <div class="admin-actions admin-actions-bottom"><button type="button" class="admin-primary" data-admin-save>Сохранить изменения</button></div>
     </section>`, { title: 'Админка', eyebrow: 'Посидым' });
 }
 
@@ -804,5 +774,24 @@ function route() {
   return notFound();
 }
 
-window.addEventListener('hashchange', route);
-route();
+async function loadRemoteMenu() {
+  try {
+    const { data, error } = await supabase.from('menu_items').select('*').order('sort_order');
+    if (error) throw error;
+    remoteMenuItems = new Map((data || []).map((row) => [row.item_key, row]));
+    backendStatus = 'ready';
+  } catch (error) {
+    backendStatus = 'fallback';
+    console.warn('Supabase menu fallback:', error.message);
+  }
+}
+
+async function bootstrap() {
+  const { data } = await supabase.auth.getSession();
+  adminSession = data.session;
+  await loadRemoteMenu();
+  window.addEventListener('hashchange', route);
+  supabase.auth.onAuthStateChange((_event, session) => { adminSession = session; });
+  route();
+}
+bootstrap();
