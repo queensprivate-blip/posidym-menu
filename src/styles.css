@@ -989,3 +989,23 @@ button { font: inherit; }
     min-height: 62px;
   }
 }
+
+/* v0.12: grouped bar menu and number-free information sections */
+.category-list {
+  grid-template-columns: 1fr;
+  gap: 11px;
+  max-width: 640px;
+  margin-inline: auto;
+}
+.category-card { min-height: 82px; padding: 16px 18px; border-radius: 18px; }
+.category-copy strong { font-size: clamp(20px, 5vw, 25px); }
+.category-copy small { display: block; overflow: visible; font-size: 12px; line-height: 1.35; }
+.menu-subsection + .menu-subsection { margin-top: 30px; padding-top: 28px; border-top: 1px solid rgba(216, 179, 106, 0.18); }
+.menu-subsection-heading { margin: 0 4px 13px; }
+.menu-subsection-heading h2 { margin: 0; color: var(--gold-light); font: 400 clamp(24px, 6vw, 31px) / 1.15 Georgia, serif; }
+.menu-subsection-heading p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.content-section-heading { display: block; margin-bottom: 15px; }
+.content-section-heading span { display: none; }
+.rule-card { grid-template-columns: 1fr; }
+.rule-card > span { display: none; }
+@media (min-width: 680px) { .category-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -17,11 +17,46 @@ const venue = {
   hours: 'Вс–Чт 14:00–02:00 · Пт–Сб 14:00–04:00',
 };
 
+const categoryById = Object.fromEntries(barCategories.map((category) => [category.id, category]));
+
+const groupedBarCategories = [
+  {
+    id: 'soft-tea-coffee',
+    title: 'Напитки, чай и кофе',
+    note: 'Безалкогольные напитки, чайные подачи и кофе',
+    sections: [categoryById['vdsiob-uwa'], categoryById['tpzfbqwhfe'], categoryById['vgejqoyhou'], categoryById['bjhbvwhhq-'], categoryById['jlabxgucjm']].filter(Boolean),
+  },
+  {
+    id: 'beer-wine',
+    title: 'Пиво и вино',
+    note: 'Пиво, сидр, тихие и игристые вина',
+    sections: [categoryById['uhomlq-uur'], categoryById['mcwxofzjor'], categoryById['faebghfnif'], categoryById['ckwsbynkaa']].filter(Boolean),
+  },
+  {
+    id: 'strong-alcohol',
+    title: 'Крепкий алкоголь',
+    note: 'Виски, водка, настойки и другие крепкие напитки',
+    sections: [categoryById['vabrnaxbka'], categoryById['pc-mfaoysx'], categoryById['unwppmnaty'], categoryById['oddjbxha-b'], categoryById['huvdrclwbz'], categoryById['whyrjhpgtm'], categoryById['g-e-wegcug'], categoryById['lvbnegxo-i'], categoryById['vtmh-rtiff']].filter(Boolean),
+  },
+  {
+    id: 'cocktails',
+    title: 'Коктейли',
+    note: 'Классические и авторские коктейли',
+    sections: [categoryById['euazcndqwm']].filter(Boolean),
+  },
+  {
+    id: 'food-desserts',
+    title: 'Кухня и десерты',
+    note: 'Закуски, пицца и десерты',
+    sections: [categoryById['futdsvldkq'], categoryById['bifsxyjojt'], categoryById['hijuf-uq-n']].filter(Boolean),
+  },
+];
+
 const menuData = {
   bar: {
     title: 'Бар',
-    subtitle: 'Напитки, алкоголь, коктейли, закуски и десерты',
-    categories: barCategories,
+    subtitle: 'Всё меню собрано в пяти понятных разделах',
+    categories: groupedBarCategories,
   },
 };
 
@@ -280,12 +315,23 @@ function categoryPage(sectionKey, categoryId) {
   const category = section.categories.find((entry) => entry.id === categoryId);
   if (!category) return notFound();
 
+  const groupedContent = category.sections
+    ? category.sections.map((subsection) => `
+        <section class="menu-subsection">
+          <header class="menu-subsection-heading">
+            <h2>${esc(subsection.title)}</h2>
+            ${subsection.note ? `<p>${esc(subsection.note)}</p>` : ''}
+          </header>
+          <div class="product-list">
+            ${subsection.items.map(productCard).join('')}
+          </div>
+        </section>`).join('')
+    : `<div class="product-list">${category.items.map(productCard).join('')}</div>`;
+
   shell(`
     <section class="inner-content category-page">
       <p class="section-subtitle">${esc(category.note)}</p>
-      <div class="product-list">
-        ${category.items.map(productCard).join('')}
-      </div>
+      ${groupedContent}
       <p class="menu-disclaimer">Позиции, цены и доступные фотографии перенесены из действующего электронного меню.</p>
     </section>`, { title: category.title, eyebrow: section.title });
 }
@@ -322,7 +368,6 @@ function infoPage() {
 
       <section class="content-section">
         <div class="content-section-heading">
-          <span>01</span>
           <h2>Акции</h2>
         </div>
         <div class="promotion-grid">
@@ -340,13 +385,11 @@ function infoPage() {
 
       <section class="content-section rules-section">
         <div class="content-section-heading">
-          <span>02</span>
           <h2>Правила</h2>
         </div>
         <div class="rules-list">
-          ${rules.map((rule, index) => `
+          ${rules.map((rule) => `
             <article class="rule-card">
-              <span>${String(index + 1).padStart(2, '0')}</span>
               <div>
                 <h3>${esc(rule.title)}</h3>
                 <p>${esc(rule.text)}</p>
