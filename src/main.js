@@ -121,6 +121,46 @@ const esc = (value = '') => String(value)
 const money = (value) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`;
 
 const CHOICE_STORAGE_KEY = 'posidym-choice-v1';
+const ADMIN_STORAGE_KEY = 'posidym-admin-overrides-v1';
+const ADMIN_SESSION_KEY = 'posidym-admin-session-v1';
+const ADMIN_DEMO_PIN = '2408';
+
+
+function readAdminOverrides() {
+  try {
+    const value = JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY) || '{}');
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeAdminOverrides(value) {
+  localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(value));
+}
+
+function effectiveItem(item) {
+  const id = choiceId(item);
+  const override = readAdminOverrides()[id] || {};
+  return {
+    ...item,
+    price: Number.isFinite(Number(override.price)) ? Number(override.price) : item.price,
+    hidden: override.hidden === true,
+  };
+}
+
+function allEditableItems() {
+  const result = [];
+  barCategories.forEach((category) => {
+    category.items.forEach((item) => result.push({ section: category.title, type: 'Бар', item }));
+  });
+  hookahItems.forEach((item) => result.push({ section: 'Кальяны', type: 'Кальяны', item }));
+  return result;
+}
+
+function isAdminAuthenticated() {
+  return sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+}
 
 function choiceId(item) {
   const source = item.image || `${item.name}-${item.price}`;
@@ -129,7 +169,7 @@ function choiceId(item) {
 
 function getChoiceCatalog() {
   const catalog = new Map();
-  const add = (item) => catalog.set(choiceId(item), item);
+  const add = (item) => { const effective = effectiveItem(item); if (!effective.hidden) catalog.set(choiceId(item), effective); };
   menuData.bar.categories.forEach((category) => {
     if (category.sections) category.sections.forEach((section) => section.items.forEach(add));
     else category.items?.forEach(add);
@@ -215,6 +255,58 @@ function bindRoutes() {
   document.querySelector('[data-choice-clear]')?.addEventListener('click', () => {
     writeChoice([]);
     choicePage();
+  });
+
+
+  document.querySelector('[data-admin-login]')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const pin = String(form.get('pin') || '');
+    const error = document.querySelector('[data-admin-error]');
+    if (pin === ADMIN_DEMO_PIN) {
+      sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+      adminPage();
+    } else if (error) {
+      error.hidden = false;
+    }
+  });
+
+  document.querySelector('[data-admin-logout]')?.addEventListener('click', () => {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    adminPage();
+  });
+
+  document.querySelectorAll('[data-admin-save]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const overrides = readAdminOverrides();
+      document.querySelectorAll('[data-admin-item]').forEach((row) => {
+        const id = row.dataset.adminItem;
+        const price = Number(row.querySelector('[data-admin-price]')?.value || 0);
+        const available = Boolean(row.querySelector('[data-admin-available]')?.checked);
+        overrides[id] = { price: Math.max(0, price), hidden: !available };
+      });
+      writeAdminOverrides(overrides);
+      const status = document.querySelector('[data-admin-status]');
+      if (status) {
+        status.textContent = 'Изменения сохранены на этом устройстве';
+        status.hidden = false;
+      }
+    });
+  });
+
+  document.querySelector('[data-admin-reset]')?.addEventListener('click', () => {
+    localStorage.removeItem(ADMIN_STORAGE_KEY);
+    adminPage();
+  });
+
+  document.querySelector('[data-admin-export]')?.addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(readAdminOverrides(), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'posidym-menu-overrides.json';
+    link.click();
+    URL.revokeObjectURL(url);
   });
 
   const venueDialog = document.querySelector('#venue-dialog');
@@ -453,9 +545,11 @@ function menuOverview(sectionKey) {
     </section>`, { title: section.title, eyebrow: 'Меню' });
 }
 
-function productCard(item) {
+function productCard(sourceItem) {
+  const item = effectiveItem(sourceItem);
+  if (item.hidden) return '';
   const hasImage = Boolean(item.image);
-  const id = choiceId(item);
+  const id = choiceId(sourceItem);
   return `
     <article class="product-card${hasImage ? ' has-image' : ''}">
       ${hasImage ? `
@@ -516,7 +610,7 @@ function hookahPage() {
   shell(`
     <section class="hookah-page" aria-label="Меню кальянов">
       <div class="hookah-carousel" data-hookah-track>
-        ${hookahItems.map((item) => `
+        ${hookahItems.map(effectiveItem).filter((item) => !item.hidden).map((item) => `
           <article class="hookah-slide" style="--hookah-image:url('${item.image}')">
             <div class="hookah-slide-copy">
               <h2>${esc(item.name)}</h2>
@@ -532,7 +626,7 @@ function hookahPage() {
           </article>`).join('')}
       </div>
       <div class="hookah-dots" aria-label="Выбор позиции">
-        ${hookahItems.map((item, index) => `
+        ${hookahItems.map(effectiveItem).filter((item) => !item.hidden).map((item, index) => `
           <button type="button" data-hookah-dot class="hookah-dot${index === 0 ? ' is-active' : ''}" aria-label="${esc(item.name)}" aria-current="${index === 0 ? 'true' : 'false'}"></button>`).join('')}
       </div>
       <p class="hookah-note">Крепость и вкусовой профиль можно подобрать вместе с кальянным мастером.</p>
@@ -615,6 +709,76 @@ function choicePage() {
     </section>`, { title: 'Мой выбор' });
 }
 
+
+function adminPage() {
+  if (!isAdminAuthenticated()) {
+    shell(`
+      <section class="admin-login-wrap">
+        <form class="admin-login-card" data-admin-login>
+          <span>Управление меню</span>
+          <h2>Вход в админку</h2>
+          <p>Введите временный PIN-код администратора.</p>
+          <label>
+            <span>PIN-код</span>
+            <input name="pin" inputmode="numeric" autocomplete="one-time-code" required maxlength="8">
+          </label>
+          <p class="admin-error" data-admin-error hidden>Неверный PIN-код</p>
+          <button type="submit">Войти</button>
+          <small>Локальная версия. Для защищённого входа с разных устройств потребуется Supabase.</small>
+        </form>
+      </section>`, { title: 'Админка' });
+    return;
+  }
+
+  const overrides = readAdminOverrides();
+  const rows = allEditableItems().map(({ section, type, item }) => {
+    const id = choiceId(item);
+    const override = overrides[id] || {};
+    const price = Number.isFinite(Number(override.price)) ? Number(override.price) : item.price;
+    const available = override.hidden !== true;
+    return `
+      <article class="admin-item" data-admin-item="${esc(id)}">
+        ${item.image ? `<img src="${esc(item.image)}" alt="" loading="lazy">` : '<span class="admin-item-placeholder"></span>'}
+        <div class="admin-item-copy">
+          <small>${esc(type)} · ${esc(section)}</small>
+          <strong>${esc(item.name)}</strong>
+        </div>
+        <label class="admin-price-field">
+          <span>Цена</span>
+          <input type="number" min="0" step="10" value="${esc(price)}" data-admin-price>
+        </label>
+        <label class="admin-switch">
+          <input type="checkbox" data-admin-available ${available ? 'checked' : ''}>
+          <span>В меню</span>
+        </label>
+      </article>`;
+  }).join('');
+
+  shell(`
+    <section class="inner-content admin-page">
+      <div class="admin-toolbar">
+        <div>
+          <span>Локальная версия</span>
+          <h2>Позиции и стоп-лист</h2>
+        </div>
+        <button type="button" data-admin-logout>Выйти</button>
+      </div>
+      <div class="admin-notice">
+        Изменения сохраняются только в браузере этого устройства. Публичный сайт на других телефонах пока не изменится.
+      </div>
+      <div class="admin-actions">
+        <button type="button" class="admin-primary" data-admin-save>Сохранить изменения</button>
+        <button type="button" data-admin-export>Скачать резервную копию</button>
+        <button type="button" data-admin-reset>Сбросить изменения</button>
+      </div>
+      <p class="admin-status" data-admin-status hidden></p>
+      <div class="admin-list">${rows}</div>
+      <div class="admin-actions admin-actions-bottom">
+        <button type="button" class="admin-primary" data-admin-save>Сохранить изменения</button>
+      </div>
+    </section>`, { title: 'Админка', eyebrow: 'Посидым' });
+}
+
 function notFound() {
   shell(`
     <section class="inner-content empty-state">
@@ -635,6 +799,7 @@ function route() {
   if (section === 'hookah') return hookahPage();
   if (section === 'info') return infoPage();
   if (section === 'choice') return choicePage();
+  if (section === 'admin') return adminPage();
   if (section === 'home' || !section) return home();
   return notFound();
 }
