@@ -484,7 +484,7 @@ function categoryPage(sectionKey, categoryId) {
   const category = section.categories.find((entry) => entry.id === categoryId);
   if (!category) return notFound();
 
-  const quickNavigation = category.sections
+  const quickNavigation = category.sections?.length > 1
     ? `<nav class="menu-quick-nav" aria-label="Быстрый переход по разделам">
         ${category.sections.map((subsection, index) => `
           <button type="button" data-menu-jump="menu-section-${index}">${esc(subsection.title)}</button>`).join('')}
