@@ -189,6 +189,13 @@ function bindRoutes() {
     else setRoute('#home');
   });
 
+  document.querySelectorAll('[data-menu-jump]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = document.getElementById(button.dataset.menuJump);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
   document.querySelectorAll('[data-choice-add]').forEach((button) => {
     button.addEventListener('click', () => {
       const ids = readChoice();
@@ -439,8 +446,7 @@ function categoryCard(sectionKey, category) {
 function menuOverview(sectionKey) {
   const section = menuData[sectionKey];
   shell(`
-    <section class="inner-content">
-      <p class="section-subtitle">${esc(section.subtitle)}</p>
+    <section class="inner-content compact-top">
       <div class="category-list">
         ${section.categories.map((category) => categoryCard(sectionKey, category)).join('')}
       </div>
@@ -478,12 +484,18 @@ function categoryPage(sectionKey, categoryId) {
   const category = section.categories.find((entry) => entry.id === categoryId);
   if (!category) return notFound();
 
+  const quickNavigation = category.sections
+    ? `<nav class="menu-quick-nav" aria-label="Быстрый переход по разделам">
+        ${category.sections.map((subsection, index) => `
+          <button type="button" data-menu-jump="menu-section-${index}">${esc(subsection.title)}</button>`).join('')}
+      </nav>`
+    : '';
+
   const groupedContent = category.sections
-    ? category.sections.map((subsection) => `
-        <section class="menu-subsection">
+    ? category.sections.map((subsection, index) => `
+        <section class="menu-subsection" id="menu-section-${index}">
           <header class="menu-subsection-heading">
             <h2>${esc(subsection.title)}</h2>
-            ${subsection.note ? `<p>${esc(subsection.note)}</p>` : ''}
           </header>
           <div class="product-list">
             ${subsection.items.map(productCard).join('')}
@@ -492,8 +504,8 @@ function categoryPage(sectionKey, categoryId) {
     : `<div class="product-list">${category.items.map(productCard).join('')}</div>`;
 
   shell(`
-    <section class="inner-content category-page">
-      <p class="section-subtitle">${esc(category.note)}</p>
+    <section class="inner-content category-page compact-top">
+      ${quickNavigation}
       ${groupedContent}
       <p class="menu-disclaimer">Позиции, цены и доступные фотографии перенесены из действующего электронного меню.</p>
     </section>`, { title: category.title, eyebrow: section.title });
@@ -503,7 +515,6 @@ function categoryPage(sectionKey, categoryId) {
 function hookahPage() {
   shell(`
     <section class="hookah-page" aria-label="Меню кальянов">
-      <p class="hookah-intro">Листайте карточки свайпом и выбирайте подходящую подачу.</p>
       <div class="hookah-carousel" data-hookah-track>
         ${hookahItems.map((item) => `
           <article class="hookah-slide" style="--hookah-image:url('${item.image}')">
@@ -532,8 +543,6 @@ function hookahPage() {
 function infoPage() {
   shell(`
     <section class="inner-content">
-      <p class="section-subtitle">Специальные предложения и важная информация для гостей</p>
-
       <section class="content-section">
         <div class="content-section-heading">
           <h2>Акции</h2>
@@ -580,7 +589,6 @@ function choicePage() {
 
   shell(`
     <section class="inner-content choice-page">
-      <p class="section-subtitle">Соберите список и покажите его официанту. Это не оформляет заказ автоматически.</p>
       ${selectedItems.length ? `
         <div class="choice-list">
           ${selectedItems.map(({ id, item }) => `
