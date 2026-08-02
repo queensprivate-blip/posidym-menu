@@ -298,13 +298,32 @@ function bindRoutes() {
         available: Boolean(row.querySelector('[data-admin-available]')?.checked),
         updated_at: new Date().toISOString(),
       }));
-      const { error } = await supabase.from('menu_items').upsert(updates, { onConflict: 'item_key' });
+      const results = await Promise.all(updates.map((update) => (
+        supabase
+          .from('menu_items')
+          .update({
+            price: update.price,
+            available: update.available,
+            updated_at: update.updated_at,
+          })
+          .eq('item_key', update.item_key)
+          .select('item_key')
+      )));
+
+      const failed = results.find((result) => result.error);
+      const missing = results.some((result) => !result.error && (!result.data || result.data.length === 0));
       const status = document.querySelector('[data-admin-status]');
       if (status) {
-        status.textContent = error ? `Ошибка: ${error.message}` : 'Изменения сохранены и доступны всем гостям';
+        if (failed?.error) {
+          status.textContent = `Ошибка: ${failed.error.message}`;
+        } else if (missing) {
+          status.textContent = 'Часть позиций не найдена в базе. Повторно выполните seed.sql.';
+        } else {
+          status.textContent = 'Изменения сохранены и доступны всем гостям';
+        }
         status.hidden = false;
       }
-      if (!error) await loadRemoteMenu();
+      if (!failed?.error && !missing) await loadRemoteMenu();
       button.disabled = false;
     });
   });
