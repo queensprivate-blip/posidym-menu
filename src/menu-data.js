@@ -1038,13 +1038,13 @@ export const importedPromotions = [
     "type": "Акция",
     "title": "1+1=3 Martini Fiero Tonic",
     "text": "Закажите два коктейля Martini Fiero Tonic и получите третий в подарок.",
-    "image": "/promo-images/martini-fiero-tonic-v10.webp?v=10"
+    "image": "/menu-images/martini-fiero-tonic-v10.webp?v=11"
   },
   {
     "type": "Акция",
     "title": "1+1=3 Коктейль Long Island",
     "text": "Закажите два коктейля Long Island и получите третий в подарок.",
-    "image": "/promo-images/long-island-v10.webp?v=10"
+    "image": "/menu-images/long-island-v10.webp?v=11"
   },
   {
     "type": "Акция",
