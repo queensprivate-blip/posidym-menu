@@ -7,6 +7,7 @@ import hookahAuthorUrl from './hookah-images/author.webp';
 import hookahElectroUrl from './hookah-images/electro.webp';
 import hookahExclusiveUrl from './hookah-images/exclusive.webp';
 import hookahPremiumUrl from './hookah-images/premium.webp';
+import { barCategories, importedPromotions } from './menu-data.js';
 
 const app = document.querySelector('#app');
 
@@ -19,92 +20,8 @@ const venue = {
 const menuData = {
   bar: {
     title: 'Бар',
-    subtitle: 'Напитки, коктейли и чайная карта',
-    categories: [
-      {
-        id: 'signature',
-        title: 'Авторские коктейли',
-        note: 'Фирменные сочетания от нашей барной команды',
-        items: [
-          { name: 'Royal Green', description: 'Джин, яблоко, базилик, цитрус', volume: '250 мл', price: 690, badge: 'Фирменный' },
-          { name: 'Velvet Smoke', description: 'Виски, вишня, ваниль, лёгкая дымность', volume: '220 мл', price: 750 },
-          { name: 'Посидым Sour', description: 'Бурбон, лимон, сахарный сироп, белок', volume: '180 мл', price: 650 },
-        ],
-      },
-      {
-        id: 'classic',
-        title: 'Классические коктейли',
-        note: 'Знакомая классика в спокойной подаче',
-        items: [
-          { name: 'Aperol Spritz', description: 'Апероль, игристое, содовая', volume: '300 мл', price: 650 },
-          { name: 'Negroni', description: 'Джин, красный вермут, биттер', volume: '120 мл', price: 690 },
-          { name: 'Whiskey Sour', description: 'Бурбон, лимон, сахарный сироп', volume: '180 мл', price: 650 },
-        ],
-      },
-      {
-        id: 'soft',
-        title: 'Безалкогольные напитки',
-        note: 'Лимонады, вода и прохладительные напитки',
-        items: [
-          { name: 'Домашний лимонад', description: 'Уточните доступные вкусы у официанта', volume: '400 мл', price: 390 },
-          { name: 'Тоник', description: 'Классический или ягодный', volume: '250 мл', price: 290 },
-          { name: 'Вода', description: 'Газированная или негазированная', volume: '500 мл', price: 250 },
-        ],
-      },
-      {
-        id: 'tea',
-        title: 'Чай и кофе',
-        note: 'Классические и авторские горячие напитки',
-        items: [
-          { name: 'Чай классический', description: 'Чёрный, зелёный или травяной', volume: '800 мл', price: 490 },
-          { name: 'Чай авторский', description: 'Ягодный, облепиховый или цитрусовый', volume: '800 мл', price: 590, badge: 'Популярное' },
-          { name: 'Американо', description: 'Двойной эспрессо и горячая вода', volume: '200 мл', price: 250 },
-        ],
-      },
-    ],
-  },
-  hookah: {
-    title: 'Кальяны',
-    subtitle: 'Подберём вкус, крепость и чашу под ваше настроение',
-    categories: [
-      {
-        id: 'classic-bowl',
-        title: 'Классическая чаша',
-        note: 'Сбалансированный кальян на классической чаше',
-        items: [
-          { name: 'Лёгкая крепость', description: 'Мягкий и ненавязчивый кальян', price: 1700 },
-          { name: 'Средняя крепость', description: 'Выразительный вкус и комфортная плотность', price: 1900, badge: 'Популярное' },
-          { name: 'Крепкий кальян', description: 'Плотная и насыщенная чашка', price: 2100 },
-        ],
-      },
-      {
-        id: 'premium-bowl',
-        title: 'Премиальная чаша',
-        note: 'Премиальные табаки и более сложные сочетания',
-        items: [
-          { name: 'Премиум Mix', description: 'Авторский микс на премиальных линейках', price: 2400 },
-          { name: 'Тёмная чаша', description: 'Насыщенный профиль и повышенная крепость', price: 2700 },
-        ],
-      },
-      {
-        id: 'fruit',
-        title: 'Кальян на фрукте',
-        note: 'Яркая подача и более сочный вкус',
-        items: [
-          { name: 'На грейпфруте', description: 'Цитрусовая свежесть и насыщенная подача', price: 2900 },
-          { name: 'На ананасе', description: 'Мягкая тропическая сладость', price: 3400 },
-        ],
-      },
-      {
-        id: 'extras',
-        title: 'Дополнения',
-        note: 'Дополнительные опции к кальяну',
-        items: [
-          { name: 'Замена чаши', description: 'Новая чаша без замены кальяна', price: 1200 },
-          { name: 'Авторская подача', description: 'Особая сервировка и дополнительные элементы', price: 500 },
-        ],
-      },
-    ],
+    subtitle: 'Напитки, алкоголь, коктейли, закуски и десерты',
+    categories: barCategories,
   },
 };
 
@@ -148,18 +65,7 @@ const hookahItems = [
   },
 ];
 
-const promotions = [
-  {
-    type: 'Акция',
-    title: 'Счастливые часы',
-    text: 'По будням до 18:00 специальные условия на кальяны. Точные условия уточняйте у администратора.',
-  },
-  {
-    type: 'Акция',
-    title: 'День рождения',
-    text: 'Специальное предложение для именинников при предварительном бронировании.',
-  },
-];
+const promotions = importedPromotions;
 
 const rules = [
   { title: 'Только 18+', text: 'При посещении заведения администратор вправе попросить документ, подтверждающий возраст.' },
@@ -351,14 +257,19 @@ function menuOverview(sectionKey) {
 }
 
 function productCard(item) {
+  const hasImage = Boolean(item.image);
   return `
-    <article class="product-card">
+    <article class="product-card${hasImage ? ' has-image' : ''}">
+      ${hasImage ? `
+        <div class="product-media">
+          <img src="${esc(item.image)}" alt="${esc(item.name)}" loading="lazy" decoding="async">
+        </div>` : ''}
       <div class="product-copy">
         <div class="product-title-row">
           <h2>${esc(item.name)}</h2>
           ${item.badge ? `<span class="product-badge">${esc(item.badge)}</span>` : ''}
         </div>
-        <p>${esc(item.description)}</p>
+        ${item.description ? `<p>${esc(item.description)}</p>` : ''}
         ${item.volume ? `<small>${esc(item.volume)}</small>` : ''}
       </div>
       <strong class="product-price">${money(item.price)}</strong>
@@ -376,7 +287,7 @@ function categoryPage(sectionKey, categoryId) {
       <div class="product-list">
         ${category.items.map(productCard).join('')}
       </div>
-      <p class="menu-disclaimer">Демонстрационные позиции и цены. Реальное меню загрузим после утверждения структуры.</p>
+      <p class="menu-disclaimer">Позиции, цены и доступные фотографии перенесены из действующего электронного меню.</p>
     </section>`, { title: category.title, eyebrow: section.title });
 }
 
@@ -417,10 +328,13 @@ function infoPage() {
         </div>
         <div class="promotion-grid">
           ${promotions.map((promotion) => `
-            <article class="promotion-card">
-              <small>${esc(promotion.type)}</small>
-              <h3>${esc(promotion.title)}</h3>
-              <p>${esc(promotion.text)}</p>
+            <article class="promotion-card${promotion.image ? ' has-image' : ''}">
+              ${promotion.image ? `<img src="${esc(promotion.image)}" alt="" loading="lazy" decoding="async">` : ''}
+              <div class="promotion-card-copy">
+                <small>${esc(promotion.type)}</small>
+                <h3>${esc(promotion.title)}</h3>
+                <p>${esc(promotion.text)}</p>
+              </div>
             </article>`).join('')}
         </div>
       </section>
