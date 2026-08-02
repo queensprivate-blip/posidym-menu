@@ -9,6 +9,7 @@ import hookahExclusiveUrl from './hookah-images/exclusive.webp';
 import hookahPremiumUrl from './hookah-images/premium.webp';
 import { barCategories, importedPromotions } from './menu-data.js';
 import { supabase } from './supabase-client.js';
+import { renderAdvancedAdmin } from './admin-panel.js';
 
 const app = document.querySelector('#app');
 
@@ -133,6 +134,9 @@ const ADMIN_STORAGE_KEY = 'posidym-admin-overrides-v1';
 let remoteMenuItems = new Map();
 let adminSession = null;
 let backendStatus = 'loading';
+let remotePromotions = null;
+let remoteRules = null;
+let remoteVenue = null;
 
 
 function readAdminOverrides() {
@@ -515,7 +519,7 @@ function home() {
             <h2 id="review-dialog-title">Оставить отзыв</h2>
           </div>
           <p>Если вам всё понравилось или у вас есть предложения, поделитесь впечатлениями о нас. Ваш отзыв помогает нам становиться лучше, и мы будем вам очень благодарны.</p>
-          <a class="review-dialog-link" href="${esc(venue.reviewUrl)}" target="_blank" rel="noopener noreferrer">Перейти к отзыву в картах</a>
+          <a class="review-dialog-link" href="${esc((remoteVenue?.review_url || venue.reviewUrl))}" target="_blank" rel="noopener noreferrer">Перейти к отзыву в картах</a>
         </div>
       </dialog>
 
@@ -528,14 +532,14 @@ function home() {
             <h2 id="venue-dialog-title">Посидым Lounge</h2>
           </div>
           <div class="venue-details">
-            <a href="https://maps.google.com/?q=${encodeURIComponent(venue.address)}">
-              <span>Адрес</span><strong>${esc(venue.address)}</strong>
+            <a href="https://maps.google.com/?q=${encodeURIComponent((remoteVenue?.address || venue.address))}">
+              <span>Адрес</span><strong>${esc((remoteVenue?.address || venue.address))}</strong>
             </a>
-            <a href="tel:${venue.phone.replace(/[^+\d]/g, '')}">
-              <span>Телефон</span><strong>${esc(venue.phone)}</strong>
+            <a href="tel:${(remoteVenue?.phone || venue.phone).replace(/[^+\d]/g, '')}">
+              <span>Телефон</span><strong>${esc((remoteVenue?.phone || venue.phone))}</strong>
             </a>
             <div>
-              <span>Режим работы</span><strong>${esc(venue.hours)}</strong>
+              <span>Режим работы</span><strong>${esc((remoteVenue?.hours || venue.hours))}</strong>
             </div>
           </div>
         </div>
@@ -661,7 +665,7 @@ function infoPage() {
           <h2>Акции</h2>
         </div>
         <div class="promotion-carousel" data-promotion-track>
-          ${promotions.map((promotion) => `
+          ${(remotePromotions || promotions).map((promotion) => `
             <article class="promotion-slide">
               ${promotion.image ? `<img src="${esc(promotion.image)}" alt="${esc(promotion.title)}" loading="lazy" decoding="async">` : ''}
               <div class="promotion-slide-copy">
@@ -672,7 +676,7 @@ function infoPage() {
             </article>`).join('')}
         </div>
         <div class="promotion-dots" aria-label="Выбор акции">
-          ${promotions.map((promotion, index) => `
+          ${(remotePromotions || promotions).map((promotion, index) => `
             <button type="button" data-promotion-dot class="promotion-dot${index === 0 ? ' is-active' : ''}" aria-label="${esc(promotion.title)}" aria-current="${index === 0 ? 'true' : 'false'}"></button>`).join('')}
         </div>
       </section>
@@ -682,7 +686,7 @@ function infoPage() {
           <h2>Правила</h2>
         </div>
         <div class="rules-list">
-          ${rules.map((rule) => `
+          ${(remoteRules || rules).map((rule) => `
             <article class="rule-card">
               <div>
                 <h3>${esc(rule.title)}</h3>
@@ -730,42 +734,7 @@ function choicePage() {
 
 
 function adminPage() {
-  if (!isAdminAuthenticated()) {
-    shell(`
-      <section class="admin-login-wrap">
-        <form class="admin-login-card" data-admin-login>
-          <span>Защищённое управление</span>
-          <h2>Вход в админку</h2>
-          <label><span>Email</span><input name="email" type="email" autocomplete="username" required></label>
-          <label><span>Пароль</span><input name="password" type="password" autocomplete="current-password" required></label>
-          <p class="admin-error" data-admin-error hidden></p>
-          <button type="submit">Войти</button>
-          <small>Вход выполняется через Supabase Auth.</small>
-        </form>
-      </section>`, { title: 'Админка' });
-    return;
-  }
-
-  const rows = allEditableItems().map(({ section, type, item }) => {
-    const current = effectiveItem(item);
-    return `
-      <article class="admin-item" data-admin-item="${esc(item.remoteKey)}">
-        ${current.image ? `<img src="${esc(current.image)}" alt="" loading="lazy">` : '<span class="admin-item-placeholder"></span>'}
-        <div class="admin-item-copy"><small>${esc(type)} · ${esc(section)}</small><strong>${esc(current.name)}</strong></div>
-        <label class="admin-price-field"><span>Цена</span><input type="number" min="0" step="10" value="${esc(current.price)}" data-admin-price></label>
-        <label class="admin-switch"><input type="checkbox" data-admin-available ${current.hidden ? '' : 'checked'}><span>В меню</span></label>
-      </article>`;
-  }).join('');
-
-  shell(`
-    <section class="inner-content admin-page">
-      <div class="admin-toolbar"><div><span>Supabase подключён</span><h2>Цены и стоп-лист</h2></div><button type="button" data-admin-logout>Выйти</button></div>
-      <div class="admin-notice">Изменения сохраняются в общей базе и отображаются у всех гостей после обновления меню.</div>
-      <div class="admin-actions"><button type="button" class="admin-primary" data-admin-save>Сохранить изменения</button></div>
-      <p class="admin-status" data-admin-status hidden></p>
-      <div class="admin-list">${rows}</div>
-      <div class="admin-actions admin-actions-bottom"><button type="button" class="admin-primary" data-admin-save>Сохранить изменения</button></div>
-    </section>`, { title: 'Админка', eyebrow: 'Посидым' });
+  return renderAdvancedAdmin(app, { session: adminSession, backgroundUrl, logoUrl });
 }
 
 function notFound() {
@@ -798,6 +767,14 @@ async function loadRemoteMenu() {
     const { data, error } = await supabase.from('menu_items').select('*').order('sort_order');
     if (error) throw error;
     remoteMenuItems = new Map((data || []).map((row) => [row.item_key, row]));
+    const [promoRes, rulesRes, venueRes] = await Promise.all([
+      supabase.from('promotions').select('*').eq('visible', true).order('sort_order'),
+      supabase.from('rules').select('*').eq('visible', true).order('sort_order'),
+      supabase.from('venue_settings').select('*').eq('id', 1).maybeSingle(),
+    ]);
+    if (!promoRes.error && promoRes.data?.length) remotePromotions = promoRes.data.map((p) => ({ type: p.type_label, title: p.title, text: p.text, image: p.image_url }));
+    if (!rulesRes.error && rulesRes.data?.length) remoteRules = rulesRes.data;
+    if (!venueRes.error && venueRes.data) remoteVenue = venueRes.data;
     backendStatus = 'ready';
   } catch (error) {
     backendStatus = 'fallback';
