@@ -15,6 +15,7 @@ const venue = {
   address: 'Москва, ул. Центральная, 12',
   phone: '+7 (999) 123-45-67',
   hours: 'Вс–Чт 14:00–02:00 · Пт–Сб 14:00–04:00',
+  reviewUrl: 'https://yandex.ru/maps/?text=%D0%9F%D0%BE%D1%81%D0%B8%D0%B4%D1%8B%D0%BC%20Lounge',
 };
 
 const categoryById = Object.fromEntries(barCategories.map((category) => [category.id, category]));
@@ -219,6 +220,17 @@ function bindRoutes() {
   venueDialog?.addEventListener('click', (event) => {
     if (event.target === venueDialog) venueDialog.close();
   });
+
+  const reviewDialog = document.querySelector('#review-dialog');
+  document.querySelector('[data-review-open]')?.addEventListener('click', () => {
+    reviewDialog?.showModal();
+  });
+  document.querySelector('[data-review-close]')?.addEventListener('click', () => {
+    reviewDialog?.close();
+  });
+  reviewDialog?.addEventListener('click', (event) => {
+    if (event.target === reviewDialog) reviewDialog.close();
+  });
 }
 
 
@@ -353,6 +365,15 @@ function homeCard(title, route, type, subtitle) {
 
 function home() {
   shell(`
+    <header class="home-header">
+      <button class="round-button review-header-button" type="button" data-review-open aria-label="Оставить отзыв" title="Оставить отзыв">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v7A2.5 2.5 0 0 1 17.5 15H10l-5 4v-4.5A2.5 2.5 0 0 1 4 12.5v-7Z"/><path d="M8 8.5h8M8 11.5h5"/></svg>
+      </button>
+      <button class="round-button choice-header-button" type="button" data-route="#choice" aria-label="Мой выбор" title="Мой выбор">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"/></svg>
+        <span class="choice-count" data-choice-count hidden>0</span>
+      </button>
+    </header>
     <section class="home-content">
       <button class="brand-trigger" type="button" data-venue-open aria-label="Открыть информацию о заведении">
         <img class="brand-logo" src="${logoUrl}" alt="Посидым Lounge">
@@ -363,6 +384,22 @@ function home() {
         ${homeCard('Кальяны', '#hookah', 'hookah', 'Вкусы, чаши и дополнения')}
         ${homeCard('Акции и правила', '#info', 'info', 'Предложения и важная информация')}
       </nav>
+
+
+      <dialog class="review-dialog" id="review-dialog" aria-labelledby="review-dialog-title">
+        <div class="review-dialog-card">
+          <button class="venue-dialog-close" type="button" data-review-close aria-label="Закрыть">×</button>
+          <div class="review-dialog-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v7A2.5 2.5 0 0 1 17.5 15H10l-5 4v-4.5A2.5 2.5 0 0 1 4 12.5v-7Z"/><path d="m9 9 2 2 4-4"/></svg>
+          </div>
+          <div class="review-dialog-heading">
+            <span>Нам важно ваше мнение</span>
+            <h2 id="review-dialog-title">Оставить отзыв</h2>
+          </div>
+          <p>Если вам всё понравилось или у вас есть предложения, поделитесь впечатлениями о нас. Ваш отзыв помогает нам становиться лучше, и мы будем вам очень благодарны.</p>
+          <a class="review-dialog-link" href="${esc(venue.reviewUrl)}" target="_blank" rel="noopener noreferrer">Перейти к отзыву в картах</a>
+        </div>
+      </dialog>
 
       <dialog class="venue-dialog" id="venue-dialog" aria-labelledby="venue-dialog-title">
         <div class="venue-dialog-card">
