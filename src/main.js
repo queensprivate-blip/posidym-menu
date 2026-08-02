@@ -119,6 +119,52 @@ const esc = (value = '') => String(value)
 
 const money = (value) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`;
 
+const CHOICE_STORAGE_KEY = 'posidym-choice-v1';
+
+function choiceId(item) {
+  const source = item.image || `${item.name}-${item.price}`;
+  return String(source).replace(/[^a-zA-Zа-яА-Я0-9_-]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function getChoiceCatalog() {
+  const catalog = new Map();
+  const add = (item) => catalog.set(choiceId(item), item);
+  menuData.bar.categories.forEach((category) => {
+    if (category.sections) category.sections.forEach((section) => section.items.forEach(add));
+    else category.items?.forEach(add);
+  });
+  hookahItems.forEach(add);
+  return catalog;
+}
+
+function readChoice() {
+  try {
+    const value = JSON.parse(localStorage.getItem(CHOICE_STORAGE_KEY) || '[]');
+    return Array.isArray(value) ? [...new Set(value.filter((id) => typeof id === 'string'))] : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeChoice(ids) {
+  localStorage.setItem(CHOICE_STORAGE_KEY, JSON.stringify([...new Set(ids)]));
+}
+
+function updateChoiceUI() {
+  const selected = new Set(readChoice());
+  document.querySelectorAll('[data-choice-count]').forEach((badge) => {
+    badge.textContent = String(selected.size);
+    badge.hidden = selected.size === 0;
+  });
+  document.querySelectorAll('[data-choice-add]').forEach((button) => {
+    const active = selected.has(button.dataset.choiceAdd);
+    button.classList.toggle('is-added', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    const label = button.querySelector('[data-choice-label]');
+    if (label) label.textContent = active ? 'Добавлено' : 'Добавить';
+  });
+}
+
 function icon(type) {
   const icons = {
     bar: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 10h28L25 26v12h8v4H15v-4h8V26L10 10Z"/><path d="M15 15h18"/><circle cx="34" cy="11" r="4"/></svg>',
@@ -140,6 +186,27 @@ function bindRoutes() {
   document.querySelector('[data-back]')?.addEventListener('click', () => {
     if (window.history.length > 1) window.history.back();
     else setRoute('#home');
+  });
+
+  document.querySelectorAll('[data-choice-add]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const ids = readChoice();
+      const id = button.dataset.choiceAdd;
+      writeChoice(ids.includes(id) ? ids.filter((entry) => entry !== id) : [...ids, id]);
+      updateChoiceUI();
+    });
+  });
+
+  document.querySelectorAll('[data-choice-remove]').forEach((button) => {
+    button.addEventListener('click', () => {
+      writeChoice(readChoice().filter((id) => id !== button.dataset.choiceRemove));
+      choicePage();
+    });
+  });
+
+  document.querySelector('[data-choice-clear]')?.addEventListener('click', () => {
+    writeChoice([]);
+    choicePage();
   });
 
   const venueDialog = document.querySelector('#venue-dialog');
@@ -261,11 +328,15 @@ function shell(content, { home = false, title = '', eyebrow = '' } = {}) {
             ${eyebrow ? `<span>${esc(eyebrow)}</span>` : ''}
             <h1>${esc(title)}</h1>
           </div>
-          <span class="round-button ghost" aria-hidden="true"></span>
+          <button class="round-button choice-header-button" type="button" data-route="#choice" aria-label="Мой выбор" title="Мой выбор">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"/></svg>
+            <span class="choice-count" data-choice-count hidden>0</span>
+          </button>
         </header>`}
       ${content}
     </main>`;
   bindRoutes();
+  updateChoiceUI();
 }
 
 function homeCard(title, route, type, subtitle) {
@@ -341,6 +412,7 @@ function menuOverview(sectionKey) {
 
 function productCard(item) {
   const hasImage = Boolean(item.image);
+  const id = choiceId(item);
   return `
     <article class="product-card${hasImage ? ' has-image' : ''}">
       ${hasImage ? `
@@ -355,7 +427,12 @@ function productCard(item) {
         ${item.description ? `<p>${esc(item.description)}</p>` : ''}
         ${item.volume ? `<small>${esc(item.volume)}</small>` : ''}
       </div>
-      <strong class="product-price">${money(item.price)}</strong>
+      <div class="product-actions">
+        <strong class="product-price">${money(item.price)}</strong>
+        <button class="choice-add-button" type="button" data-choice-add="${esc(id)}" aria-pressed="false">
+          <span aria-hidden="true">＋</span><span data-choice-label>Добавить</span>
+        </button>
+      </div>
     </article>`;
 }
 
@@ -397,7 +474,12 @@ function hookahPage() {
               <h2>${esc(item.name)}</h2>
               <span class="hookah-divider" aria-hidden="true"></span>
               <p>${esc(item.description)}</p>
-              <strong>${money(item.price)}</strong>
+              <div class="hookah-slide-actions">
+                <strong>${money(item.price)}</strong>
+                <button class="choice-add-button hookah-choice-button" type="button" data-choice-add="${esc(choiceId(item))}" aria-pressed="false">
+                  <span aria-hidden="true">＋</span><span data-choice-label>Добавить</span>
+                </button>
+              </div>
             </div>
           </article>`).join('')}
       </div>
@@ -454,6 +536,40 @@ function infoPage() {
   initPromotionCarousel();
 }
 
+function choicePage() {
+  const catalog = getChoiceCatalog();
+  const selectedItems = readChoice().map((id) => ({ id, item: catalog.get(id) })).filter((entry) => entry.item);
+  const total = selectedItems.reduce((sum, entry) => sum + Number(entry.item.price || 0), 0);
+
+  shell(`
+    <section class="inner-content choice-page">
+      <p class="section-subtitle">Соберите список и покажите его официанту. Это не оформляет заказ автоматически.</p>
+      ${selectedItems.length ? `
+        <div class="choice-list">
+          ${selectedItems.map(({ id, item }) => `
+            <article class="choice-item">
+              ${item.image ? `<img src="${esc(item.image)}" alt="${esc(item.name)}" loading="lazy" decoding="async">` : '<span class="choice-item-placeholder" aria-hidden="true"></span>'}
+              <div class="choice-item-copy">
+                <h2>${esc(item.name)}</h2>
+                <strong>${money(item.price)}</strong>
+              </div>
+              <button type="button" class="choice-remove-button" data-choice-remove="${esc(id)}" aria-label="Удалить ${esc(item.name)}">×</button>
+            </article>`).join('')}
+        </div>
+        <div class="choice-summary">
+          <span>Ориентировочная сумма</span>
+          <strong>${money(total)}</strong>
+          <button type="button" data-choice-clear>Очистить список</button>
+        </div>` : `
+        <div class="choice-empty">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"/></svg>
+          <h2>Пока ничего не выбрано</h2>
+          <p>Добавляйте позиции из бара и раздела кальянов.</p>
+          <button type="button" data-route="#bar">Перейти в меню</button>
+        </div>`}
+    </section>`, { title: 'Мой выбор' });
+}
+
 function notFound() {
   shell(`
     <section class="inner-content empty-state">
@@ -473,6 +589,7 @@ function route() {
   if (section === 'bar') return menuOverview('bar');
   if (section === 'hookah') return hookahPage();
   if (section === 'info') return infoPage();
+  if (section === 'choice') return choicePage();
   if (section === 'home' || !section) return home();
   return notFound();
 }
