@@ -107,6 +107,7 @@ const rules = [
   { title: 'Бронирование', text: 'Стол считается забронированным после подтверждения администратора. Для отдельных дат возможен депозит.' },
   { title: 'Время брони', text: 'При опоздании более чем на 15 минут бронь может быть отменена, если вы не предупредили администратора.' },
   { title: 'Поведение гостей', text: 'Просим бережно относиться к имуществу заведения и уважительно общаться с другими гостями и персоналом.' },
+  { title: 'Кальянная подача', text: 'Для комфортного отдыха действует минимальное количество кальянов на компанию: для 1–3 гостей — 1 кальян, для 3–5 гостей — 2 кальяна, для компаний от 5 гостей — 3 кальяна. Стандартное время курения одного кальяна составляет до 2 часов.' },
 ];
 
 const esc = (value = '') => String(value)
@@ -160,6 +161,54 @@ function initHookahCarousel() {
   if (!track || !dots.length) return;
 
   const slides = [...track.querySelectorAll('.hookah-slide')];
+  let frame = 0;
+
+  const setActive = (index) => {
+    dots.forEach((dot, dotIndex) => {
+      const active = dotIndex === index;
+      dot.classList.toggle('is-active', active);
+      dot.setAttribute('aria-current', active ? 'true' : 'false');
+    });
+  };
+
+  const nearestSlide = () => {
+    const trackCenter = track.scrollLeft + track.clientWidth / 2;
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    slides.forEach((slide, index) => {
+      const center = slide.offsetLeft + slide.offsetWidth / 2;
+      const distance = Math.abs(center - trackCenter);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+    setActive(bestIndex);
+  };
+
+  track.addEventListener('scroll', () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(nearestSlide);
+  }, { passive: true });
+
+  dots.forEach((dot, index) => {
+    dot.addEventListener('click', () => {
+      slides[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    });
+  });
+
+  requestAnimationFrame(() => {
+    slides[0]?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    setActive(0);
+  });
+}
+
+function initPromotionCarousel() {
+  const track = document.querySelector('[data-promotion-track]');
+  const dots = [...document.querySelectorAll('[data-promotion-dot]')];
+  if (!track || !dots.length) return;
+
+  const slides = [...track.querySelectorAll('.promotion-slide')];
   let frame = 0;
 
   const setActive = (index) => {
@@ -370,16 +419,20 @@ function infoPage() {
         <div class="content-section-heading">
           <h2>Акции</h2>
         </div>
-        <div class="promotion-grid">
+        <div class="promotion-carousel" data-promotion-track>
           ${promotions.map((promotion) => `
-            <article class="promotion-card${promotion.image ? ' has-image' : ''}">
-              ${promotion.image ? `<img src="${esc(promotion.image)}" alt="" loading="lazy" decoding="async">` : ''}
-              <div class="promotion-card-copy">
+            <article class="promotion-slide">
+              ${promotion.image ? `<img src="${esc(promotion.image)}" alt="${esc(promotion.title)}" loading="lazy" decoding="async">` : ''}
+              <div class="promotion-slide-copy">
                 <small>${esc(promotion.type)}</small>
                 <h3>${esc(promotion.title)}</h3>
                 <p>${esc(promotion.text)}</p>
               </div>
             </article>`).join('')}
+        </div>
+        <div class="promotion-dots" aria-label="Выбор акции">
+          ${promotions.map((promotion, index) => `
+            <button type="button" data-promotion-dot class="promotion-dot${index === 0 ? ' is-active' : ''}" aria-label="${esc(promotion.title)}" aria-current="${index === 0 ? 'true' : 'false'}"></button>`).join('')}
         </div>
       </section>
 
@@ -398,6 +451,7 @@ function infoPage() {
         </div>
       </section>
     </section>`, { title: 'Акции и правила', eyebrow: 'Информация' });
+  initPromotionCarousel();
 }
 
 function notFound() {
