@@ -236,7 +236,6 @@ function home() {
 function categoryCard(sectionKey, category) {
   return `
     <button class="category-card" data-route="#${sectionKey}/${category.id}">
-      <span class="category-index">${String(menuData[sectionKey].categories.indexOf(category) + 1).padStart(2, '0')}</span>
       <span class="category-copy">
         <strong>${esc(category.title)}</strong>
         <small>${esc(category.note)}</small>
