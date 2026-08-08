@@ -17,7 +17,7 @@ const venue = {
   address: 'Москва, ул. Центральная, 12',
   phone: '+7 (999) 123-45-67',
   hours: 'Вс–Чт 14:00–02:00 · Пт–Сб 14:00–04:00',
-  reviewUrl: 'https://yandex.ru/maps/?text=%D0%9F%D0%BE%D1%81%D0%B8%D0%B4%D1%8B%D0%BC%20Lounge',
+  reviewUrl: 'https://yandex.ru/maps/213/moscow/?ll=37.698523%2C55.750618&mode=poi&poi%5Bpoint%5D=37.697811%2C55.751194&poi%5Buri%5D=ymapsbm1%3A%2F%2Forg%3Foid%3D245377761010&tab=reviews&z=18.12',
 };
 
 const categoryById = Object.fromEntries(barCategories.map((category) => [category.id, category]));
@@ -72,16 +72,22 @@ const menuData = {
 
 const hookahItems = [
   {
+    name: 'На грейпфруте',
+    description: 'Сочная цитрусовая подача с более ярким ароматом.',
+    price: 2600,
+    image: hookahGrapefruitUrl,
+  },
+  {
     name: 'Классический кальян',
     description: 'Традиционная подача и мягкий, сбалансированный вкус.',
     price: 2150,
     image: hookahClassicUrl,
   },
   {
-    name: 'На грейпфруте',
-    description: 'Сочная цитрусовая подача с более ярким ароматом.',
-    price: 2600,
-    image: hookahGrapefruitUrl,
+    name: 'Добавка премиум табаков',
+    description: 'Дополнение к выбранному кальяну премиальными линейками табака.',
+    price: 450,
+    image: hookahPremiumUrl,
   },
   {
     name: 'Авторский',
@@ -100,12 +106,6 @@ const hookahItems = [
     description: 'Премиальная подача, редкие сочетания и максимум внимания к деталям.',
     price: 3500,
     image: hookahExclusiveUrl,
-  },
-  {
-    name: 'Добавка премиум табаков',
-    description: 'Дополнение к выбранному кальяну премиальными линейками табака.',
-    price: 450,
-    image: hookahPremiumUrl,
   },
 ];
 hookahItems.forEach((item) => { item.remoteKey = remoteKey('hookah', 'hookah', item.name); });
@@ -515,8 +515,7 @@ function home() {
             <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v7A2.5 2.5 0 0 1 17.5 15H10l-5 4v-4.5A2.5 2.5 0 0 1 4 12.5v-7Z"/><path d="m9 9 2 2 4-4"/></svg>
           </div>
           <div class="review-dialog-heading">
-            <span>Нам важно ваше мнение</span>
-            <h2 id="review-dialog-title">Оставить отзыв</h2>
+            <span id="review-dialog-title">Нам важно ваше мнение</span>
           </div>
           <p>Если вам всё понравилось или у вас есть предложения, поделитесь впечатлениями о нас. Ваш отзыв помогает нам становиться лучше, и мы будем вам очень благодарны.</p>
           <a class="review-dialog-link" href="${esc((remoteVenue?.review_url || venue.reviewUrl))}" target="_blank" rel="noopener noreferrer">Перейти к отзыву в картах</a>
