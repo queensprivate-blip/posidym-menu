@@ -32,8 +32,8 @@ function sectionOptions(selected=''){return state.sections.map(s=>`<option value
 
 function itemRows(){
  const q=state.query.toLowerCase();
- return state.items.filter(i=>(state.type==='all'||i.type===state.type)&&(!q||`${i.name} ${i.section_title}`.toLowerCase().includes(q))).map(i=>`<article class="admin-pro-card" data-item-key="${esc(i.item_key)}">
-  <div class="admin-pro-head">${i.image_url?`<img src="${esc(i.image_url)}" alt="">`:'<span class="admin-photo-empty">Фото</span>'}<div><small>${esc(i.type)} · ${esc(i.section_title)}</small><strong>${esc(i.name)}</strong></div><button class="admin-danger-ghost" data-item-archive>${i.archived?'Восстановить':'Удалить'}</button></div>
+ return state.items.filter(i=>(state.type==='all'||i.type===state.type)&&(!q||`${i.name} ${i.section_title}`.toLowerCase().includes(q))).map(i=>`<article class="admin-pro-card ${i.archived?'is-archived':i.available?'is-live':'is-stopped'}" data-item-key="${esc(i.item_key)}">
+  <div class="admin-pro-head">${i.image_url?`<img src="${esc(i.image_url)}" alt="">`:'<span class="admin-photo-empty">Фото</span>'}<div><small>${esc(i.type)} · ${esc(i.section_title)}</small><strong>${esc(i.name)}</strong><span class="admin-state-pill ${i.archived?'is-archived':i.available?'is-live':'is-stopped'}">${i.archived?'Архив':i.available?'В меню':'Стоп-лист'}</span></div><button class="admin-danger-ghost" data-item-archive>${i.archived?'Восстановить':'Удалить'}</button></div>
   <div class="admin-form-grid">
    ${field('Название',`<input data-f="name" value="${esc(i.name)}">`)}
    ${field('Цена',`<input data-f="price" type="number" min="0" value="${esc(i.price)}">`)}
