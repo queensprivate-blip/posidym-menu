@@ -8,7 +8,45 @@ const safeStorageExt = (file) => {
 };
 const safeStorageId = () => (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2,12)}`).replace(/[^a-zA-Z0-9-]/g,'');
 const itemSearchText = (i) => normalizeSearch([i.name,i.section_title,i.type,i.volume,i.description,i.price].filter(v=>v!==null&&v!==undefined).join(' '));
+const makeItemKey = (values={}) => `${values.type||'bar'}:${values.section_id||'section'}:custom-${safeStorageId()}`;
 let state = { tab:'items', items:[], sections:[], promotions:[], rules:[], venue:null, query:'', type:'all' };
+
+const BAR_CATEGORY_GROUPS = [
+  { title:'Напитки, чай и кофе', ids:['vdsiob-uwa','tpzfbqwhfe','vgejqoyhou','bjhbvwhhq-','jlabxgucjm'] },
+  { title:'Пиво и вино', ids:['uhomlq-uur','mcwxofzjor','faebghfnif','ckwsbynkaa'] },
+  { title:'Крепкий алкоголь', ids:['vabrnaxbka','pc-mfaoysx','unwppmnaty','oddjbxha-b','huvdrclwbz','whyrjhpgtm','g-e-wegcug','lvbnegxo-i','vtmh-rtiff'] },
+  { title:'Коктейли', ids:['euazcndqwm'] },
+  { title:'Кухня и десерты', ids:['futdsvldkq','bifsxyjojt','hijuf-uq-n'] },
+];
+
+function sectionTypeOptions(selected='bar'){
+  return `<option value="bar" ${selected==='bar'?'selected':''}>Бар</option><option value="hookah" ${selected==='hookah'?'selected':''}>Кальяны</option>`;
+}
+
+function terminalSectionOptions(type='bar',selected=''){
+  const sections = state.sections.filter(s => s.type === type && s.visible !== false);
+  if(type === 'hookah'){
+    return sections.map(s=>`<option value="${esc(s.section_id)}" ${s.section_id===selected?'selected':''}>${esc(s.title)}</option>`).join('');
+  }
+
+  const used = new Set();
+  const groups = BAR_CATEGORY_GROUPS.map(group=>{
+    const rows = group.ids.map(id=>sections.find(s=>s.section_id===id)).filter(Boolean);
+    rows.forEach(s=>used.add(s.section_id));
+    if(!rows.length) return '';
+    return `<optgroup label="${esc(group.title)}">${rows.map(s=>`<option value="${esc(s.section_id)}" ${s.section_id===selected?'selected':''}>${esc(s.title)}</option>`).join('')}</optgroup>`;
+  }).join('');
+
+  const extra = sections.filter(s=>!used.has(s.section_id));
+  return groups + (extra.length
+    ? `<optgroup label="Другие категории">${extra.map(s=>`<option value="${esc(s.section_id)}" ${s.section_id===selected?'selected':''}>${esc(s.title)}</option>`).join('')}</optgroup>`
+    : '');
+}
+
+function firstTerminalSection(type='bar'){
+  const current = state.sections.find(s=>s.type===type && s.visible!==false);
+  return current || state.sections.find(s=>s.type===type) || null;
+}
 
 async function loadAll(){
   const [items,sections,promotions,rules,venue] = await Promise.all([
@@ -44,26 +82,26 @@ function filePicker(inputAttr,currentUrl=''){
     </div>
   </div>`;
 }
-function sectionOptions(selected=''){return state.sections.map(s=>`<option value="${esc(s.section_id)}" ${s.section_id===selected?'selected':''}>${esc(s.title)}</option>`).join('');}
 
 function itemRows(){
- return state.items.map(i=>`<article class="admin-pro-card ${i.archived?'is-archived':i.available?'is-live':'is-stopped'}" data-item-key="${esc(i.item_key)}" data-item-type="${esc(i.type)}" data-item-search="${esc(itemSearchText(i))}">
-  <div class="admin-pro-head">${i.image_url?`<img src="${esc(i.image_url)}" alt="">`:'<span class="admin-photo-empty">Фото</span>'}<div><small>${esc(i.type)} · ${esc(i.section_title)}</small><strong>${esc(i.name)}</strong><span class="admin-state-pill ${i.archived?'is-archived':i.available?'is-live':'is-stopped'}">${i.archived?'Архив':i.available?'В меню':'Стоп-лист'}</span></div><button class="admin-danger-ghost" data-item-archive>${i.archived?'Восстановить':'Удалить'}</button></div>
+ return state.items.map(i=>`<article class="admin-pro-card ${i._draft?'is-draft':i.archived?'is-archived':i.available?'is-live':'is-stopped'}" data-item-key="${esc(i.item_key)}" data-item-type="${esc(i.type)}" data-item-search="${esc(itemSearchText(i))}" ${i._draft?'data-item-draft="1"':''}>
+  <div class="admin-pro-head">${i.image_url?`<img src="${esc(i.image_url)}" alt="">`:'<span class="admin-photo-empty">Фото</span>'}<div><small>${esc(i.type)} · ${esc(i.section_title)}</small><strong>${esc(i.name)}</strong><span class="admin-state-pill ${i._draft?'is-draft':i.archived?'is-archived':i.available?'is-live':'is-stopped'}">${i._draft?'Черновик':i.archived?'Архив':i.available?'В меню':'Стоп-лист'}</span></div><button type="button" class="admin-danger-ghost" data-item-archive>${i._draft?'Отменить':i.archived?'Восстановить':'Удалить'}</button></div>
   <div class="admin-form-grid">
    ${field('Название',`<input data-f="name" value="${esc(i.name)}">`)}
    ${field('Цена',`<input data-f="price" type="number" min="0" value="${esc(i.price)}">`)}
    ${field('Объём',`<input data-f="volume" value="${esc(i.volume||'')}">`)}
-   ${field('Раздел',`<select data-f="section_id">${sectionOptions(i.section_id)}</select>`)}
+   ${field('Тип меню',`<select data-f="type" data-item-menu-type>${sectionTypeOptions(i.type||'bar')}</select>`)}
+   ${field('Конечная категория',`<select data-f="section_id" data-item-terminal-category>${terminalSectionOptions(i.type||'bar',i.section_id)}</select><small class="admin-field-hint">Именно здесь позиция появится у гостя.</small>`)}
    ${field('Описание',`<textarea data-f="description">${esc(i.description||'')}</textarea>`)}
    ${field('Фото',filePicker('data-item-file',i.image_url||''))}
    ${field('Порядок',`<input data-f="sort_order" type="number" value="${esc(i.sort_order||0)}">`)}
    ${field('В меню',`<input data-f="available" type="checkbox" ${i.available&&!i.archived?'checked':''}>`)}
-  </div><button class="admin-primary small" data-item-save>Сохранить позицию</button>
+  </div><button type="button" class="admin-primary small" data-item-save>${i._draft?'Создать позицию':'Сохранить позицию'}</button>
  </article>`).join('');
 }
 
 
-function itemsTab(){return `<div class="admin-tab-toolbar"><div class="admin-search-wrap"><input placeholder="Поиск по названию, разделу, описанию…" data-admin-search value="${esc(state.query)}"><button type="button" class="admin-search-clear" data-admin-search-clear aria-label="Очистить поиск" ${state.query?'':'hidden'}>×</button></div><select data-admin-type><option value="all">Все</option><option value="bar" ${state.type==='bar'?'selected':''}>Бар</option><option value="hookah" ${state.type==='hookah'?'selected':''}>Кальяны</option></select><button class="admin-primary" data-add-item>Добавить позицию</button><span class="admin-search-count" data-admin-search-count></span></div><div class="admin-pro-list">${itemRows()}<p class="admin-empty admin-search-empty" data-admin-search-empty hidden>Ничего не найдено.</p></div>`;}
+function itemsTab(){return `<div class="admin-tab-toolbar"><div class="admin-search-wrap"><input placeholder="Поиск по названию, разделу, описанию…" data-admin-search value="${esc(state.query)}"><button type="button" class="admin-search-clear" data-admin-search-clear aria-label="Очистить поиск" ${state.query?'':'hidden'}>×</button></div><select data-admin-type><option value="all">Все</option><option value="bar" ${state.type==='bar'?'selected':''}>Бар</option><option value="hookah" ${state.type==='hookah'?'selected':''}>Кальяны</option></select><button type="button" class="admin-primary" data-add-item>Добавить позицию</button><span class="admin-search-count" data-admin-search-count></span></div><div class="admin-pro-list">${itemRows()}<p class="admin-empty admin-search-empty" data-admin-search-empty hidden>Ничего не найдено.</p></div>`;}
 function sectionsTab(){return `<div class="admin-actions-line"><button class="admin-primary" data-add-section>Добавить категорию</button></div><div class="admin-pro-list">${state.sections.map(s=>`<article class="admin-pro-card" data-section-id="${esc(s.section_id)}"><div class="admin-form-grid">${field('Название',`<input data-f="title" value="${esc(s.title)}">`)}${field('Описание',`<input data-f="note" value="${esc(s.note||'')}">`)}${field('Тип',`<select data-f="type"><option value="bar" ${s.type==='bar'?'selected':''}>Бар</option><option value="hookah" ${s.type==='hookah'?'selected':''}>Кальяны</option></select>`)}${field('Группа',`<input data-f="parent_group" value="${esc(s.parent_group||'')}">`)}${field('Порядок',`<input data-f="sort_order" type="number" value="${s.sort_order||0}">`)}${field('Показывать',`<input data-f="visible" type="checkbox" ${s.visible?'checked':''}>`)}</div><div class="admin-card-actions"><button class="admin-primary small" data-section-save>Сохранить</button><button class="admin-danger-ghost" data-section-delete>Удалить</button></div></article>`).join('')}</div>`;}
 function promotionsTab(){return `<div class="admin-actions-line"><button class="admin-primary" data-add-promotion>Добавить акцию</button></div><div class="admin-pro-list">${state.promotions.map(p=>`<article class="admin-pro-card" data-promotion-id="${p.id}">${p.image_url?`<img class="admin-banner-preview" src="${esc(p.image_url)}" alt="">`:''}<div class="admin-form-grid">${field('Название',`<input data-f="title" value="${esc(p.title)}">`)}${field('Метка',`<input data-f="type_label" value="${esc(p.type_label||'Акция')}">`)}${field('Текст',`<textarea data-f="text">${esc(p.text||'')}</textarea>`)}${field('Изображение',filePicker('data-promo-file',p.image_url||''))}${field('Порядок',`<input data-f="sort_order" type="number" value="${p.sort_order||0}">`)}${field('Показывать',`<input data-f="visible" type="checkbox" ${p.visible?'checked':''}>`)}</div><div class="admin-card-actions"><button class="admin-primary small" data-promotion-save>Сохранить</button><button class="admin-danger-ghost" data-promotion-delete>Удалить</button></div></article>`).join('')}</div>`;}
 function rulesTab(){return `<div class="admin-actions-line"><button class="admin-primary" data-add-rule>Добавить правило</button></div><div class="admin-pro-list">${state.rules.map(r=>`<article class="admin-pro-card" data-rule-id="${r.id}"><div class="admin-form-grid">${field('Заголовок',`<input data-f="title" value="${esc(r.title)}">`)}${field('Текст',`<textarea data-f="text">${esc(r.text||'')}</textarea>`)}${field('Порядок',`<input data-f="sort_order" type="number" value="${r.sort_order||0}">`)}${field('Показывать',`<input data-f="visible" type="checkbox" ${r.visible?'checked':''}>`)}</div><div class="admin-card-actions"><button class="admin-primary small" data-rule-save>Сохранить</button><button class="admin-danger-ghost" data-rule-delete>Удалить</button></div></article>`).join('')}</div>`;}
@@ -119,62 +157,81 @@ function bind(render){
     }
   });
  });
- document.querySelector('[data-add-item]')?.addEventListener('click',async(e)=>{
-  const button=e.currentTarget;
-  const s=state.sections.find(x=>x.type===(state.type==='hookah'?'hookah':'bar')) || state.sections.find(x=>x.type==='bar') || state.sections[0];
+ document.querySelectorAll('[data-item-menu-type]').forEach(typeSelect=>{
+  typeSelect.addEventListener('change',()=>{
+    const card=typeSelect.closest('[data-item-key]');
+    const categorySelect=card?.querySelector('[data-item-terminal-category]');
+    if(!categorySelect)return;
+    const options=terminalSectionOptions(typeSelect.value,'');
+    categorySelect.innerHTML=options;
+    const first=firstTerminalSection(typeSelect.value);
+    if(first)categorySelect.value=first.section_id;
+  });
+ });
+ document.querySelector('[data-add-item]')?.addEventListener('click',()=>{
+  const draftType=state.type==='hookah'?'hookah':'bar';
+  const s=firstTerminalSection(draftType) || firstTerminalSection('bar') || state.sections[0];
   if(!s){toast('Сначала создайте хотя бы одну категорию.',true);return;}
-  const key=`${s.type}:${s.section_id}:new-${Date.now()}`;
-  button.disabled=true;
-  const oldText=button.textContent;
-  button.textContent='Создаю…';
-  try{
-    const {error}=await supabase.from('menu_items').insert({
-      item_key:key,
-      type:s.type||'bar',
-      section_id:s.section_id,
-      section_title:s.title||'Новый раздел',
-      name:'Новая позиция',
-      description:'',
-      volume:'',
-      price:0,
-      available:false,
-      archived:false,
-      sort_order:-1000000
-    });
-    if(error)throw error;
-    state.query='';
-    state.type=s.type||'bar';
-    await loadAll();
-    render();
-    requestAnimationFrame(()=>{
-      const card=[...document.querySelectorAll('[data-item-key]')].find(el=>el.dataset.itemKey===key);
-      if(card){
-        card.classList.add('is-newly-created');
-        card.scrollIntoView({behavior:'smooth',block:'center'});
-        card.querySelector('[data-f="name"]')?.focus();
-      }
-    });
-    toast('Новая позиция создана. Заполните данные и нажмите «Сохранить позицию».');
-  }catch(err){
-    toast(`Не удалось создать позицию: ${err.message}`,true);
-    button.disabled=false;
-    button.textContent=oldText;
-  }
+  const key=`draft-${safeStorageId()}`;
+  state.query='';
+  state.type=s.type||'bar';
+  state.items.unshift({
+    _draft:true,
+    item_key:key,
+    type:s.type||'bar',
+    section_id:s.section_id,
+    section_title:s.title||'Новый раздел',
+    name:'Новая позиция',
+    description:'',
+    volume:'',
+    price:0,
+    image_url:null,
+    available:false,
+    archived:false,
+    sort_order:0
+  });
+  render();
+  requestAnimationFrame(()=>{
+    const card=document.querySelector(`[data-item-key="${key}"]`);
+    if(card){
+      card.classList.add('is-newly-created');
+      card.scrollIntoView({behavior:'smooth',block:'center'});
+      const input=card.querySelector('[data-f="name"]');
+      if(input){input.focus();input.select();}
+    }
+  });
+  toast('Черновик создан. Заполните поля и нажмите «Создать позицию».');
  });
  document.querySelectorAll('[data-item-save]').forEach(b=>b.onclick=async()=>{
   const c=b.closest('[data-item-key]'), values=readCard(c);
   const section=state.sections.find(s=>s.section_id===values.section_id);
-  values.section_title=section?.title||values.section_id; values.type=section?.type||'bar';
+  if(!section){toast('Выберите конечную категорию позиции.',true);return;}
+  values.section_id=section.section_id;
+  values.section_title=section.title;
+  values.type=section.type;
   const file=c.querySelector('[data-item-file]')?.files?.[0];
+  const isDraft=c.dataset.itemDraft==='1';
   try{
-    if(file){b.disabled=true;b.textContent='Загружаю фото…';values.image_url=await upload(file,'items');}
-    const {error}=await supabase.from('menu_items').update(values).eq('item_key',c.dataset.itemKey);
+    b.disabled=true;
+    if(file){b.textContent='Загружаю фото…';values.image_url=await upload(file,'items');}
+    b.textContent=isDraft?'Создаю позицию…':'Сохраняю…';
+    let error;
+    if(isDraft){
+      const item_key=makeItemKey(values);
+      ({error}=await supabase.from('menu_items').insert({...values,item_key,archived:false}));
+    }else{
+      ({error}=await supabase.from('menu_items').update(values).eq('item_key',c.dataset.itemKey));
+    }
     if(error)throw error;
-    toast(file?'Фото загружено, позиция сохранена':'Позиция сохранена');
+    toast(isDraft?'Позиция создана':file?'Фото загружено, позиция сохранена':'Позиция сохранена');
     await refresh(render);
-  }catch(e){toast(`Не удалось сохранить: ${e.message}`,true);b.disabled=false;b.textContent='Сохранить позицию';}
+  }catch(e){
+    toast(`Не удалось сохранить: ${e.message}`,true);
+    b.disabled=false;
+    b.textContent=isDraft?'Создать позицию':'Сохранить позицию';
+  }
  });
- document.querySelectorAll('[data-item-archive]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-item-key]'), row=state.items.find(i=>i.item_key===c.dataset.itemKey); const {error}=await supabase.from('menu_items').update({archived:!row.archived,available:row.archived}).eq('item_key',row.item_key); if(error)return toast(error.message,true); await refresh(render);});
+ document.querySelectorAll('[data-item-archive]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-item-key]'), row=state.items.find(i=>i.item_key===c.dataset.itemKey); if(row?._draft){state.items=state.items.filter(i=>i.item_key!==row.item_key);render();toast('Черновик удалён');return;} const {error}=await supabase.from('menu_items').update({archived:!row.archived,available:row.archived}).eq('item_key',row.item_key); if(error)return toast(error.message,true); await refresh(render);});
  document.querySelector('[data-add-section]')?.addEventListener('click',async()=>{const id=`section-${Date.now()}`; const {error}=await supabase.from('menu_sections').insert({section_id:id,type:'bar',title:'Новая категория',sort_order:-1000000}); if(error)return toast(error.message,true); await loadAll();render();requestAnimationFrame(()=>document.querySelector(`[data-section-id="${id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}));});
  document.querySelectorAll('[data-section-save]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-section-id]');const {error}=await supabase.from('menu_sections').update(readCard(c)).eq('section_id',c.dataset.sectionId);if(error)return toast(error.message,true);toast('Категория сохранена');await refresh(render);});
  document.querySelectorAll('[data-section-delete]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-section-id]');if(!confirm('Удалить категорию? Позиции останутся в базе.'))return;const {error}=await supabase.from('menu_sections').delete().eq('section_id',c.dataset.sectionId);if(error)return toast(error.message,true);await refresh(render);});
