@@ -1920,3 +1920,16 @@ button { font: inherit; }
   .admin-file-controls{align-items:flex-start;flex-direction:column}
   .admin-file-button{width:100%}
 }
+
+
+/* v0.28 — creation feedback */
+.admin-pro-card.is-newly-created{
+  border-color:#e6c574 !important;
+  box-shadow:0 0 0 3px rgba(230,197,116,.18),0 18px 50px rgba(0,0,0,.42) !important;
+  animation:adminNewCardPulse 1.6s ease-out 1;
+}
+@keyframes adminNewCardPulse{
+  0%{transform:scale(.992);box-shadow:0 0 0 0 rgba(230,197,116,.45)}
+  45%{transform:scale(1);box-shadow:0 0 0 6px rgba(230,197,116,.12)}
+  100%{box-shadow:0 0 0 3px rgba(230,197,116,.18),0 18px 50px rgba(0,0,0,.42)}
+}

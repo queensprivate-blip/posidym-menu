@@ -119,7 +119,48 @@ function bind(render){
     }
   });
  });
- document.querySelector('[data-add-item]')?.addEventListener('click',async()=>{const s=state.sections.find(x=>x.type==='bar')||state.sections[0]; const key=`bar:${s?.section_id||'new'}:${Date.now()}`; const {error}=await supabase.from('menu_items').insert({item_key:key,type:s?.type||'bar',section_id:s?.section_id||'new',section_title:s?.title||'Новый раздел',name:'Новая позиция',price:0,sort_order:999}); if(error)return toast(error.message,true); await refresh(render);});
+ document.querySelector('[data-add-item]')?.addEventListener('click',async(e)=>{
+  const button=e.currentTarget;
+  const s=state.sections.find(x=>x.type===(state.type==='hookah'?'hookah':'bar')) || state.sections.find(x=>x.type==='bar') || state.sections[0];
+  if(!s){toast('Сначала создайте хотя бы одну категорию.',true);return;}
+  const key=`${s.type}:${s.section_id}:new-${Date.now()}`;
+  button.disabled=true;
+  const oldText=button.textContent;
+  button.textContent='Создаю…';
+  try{
+    const {error}=await supabase.from('menu_items').insert({
+      item_key:key,
+      type:s.type||'bar',
+      section_id:s.section_id,
+      section_title:s.title||'Новый раздел',
+      name:'Новая позиция',
+      description:'',
+      volume:'',
+      price:0,
+      available:false,
+      archived:false,
+      sort_order:-1000000
+    });
+    if(error)throw error;
+    state.query='';
+    state.type=s.type||'bar';
+    await loadAll();
+    render();
+    requestAnimationFrame(()=>{
+      const card=[...document.querySelectorAll('[data-item-key]')].find(el=>el.dataset.itemKey===key);
+      if(card){
+        card.classList.add('is-newly-created');
+        card.scrollIntoView({behavior:'smooth',block:'center'});
+        card.querySelector('[data-f="name"]')?.focus();
+      }
+    });
+    toast('Новая позиция создана. Заполните данные и нажмите «Сохранить позицию».');
+  }catch(err){
+    toast(`Не удалось создать позицию: ${err.message}`,true);
+    button.disabled=false;
+    button.textContent=oldText;
+  }
+ });
  document.querySelectorAll('[data-item-save]').forEach(b=>b.onclick=async()=>{
   const c=b.closest('[data-item-key]'), values=readCard(c);
   const section=state.sections.find(s=>s.section_id===values.section_id);
@@ -134,10 +175,10 @@ function bind(render){
   }catch(e){toast(`Не удалось сохранить: ${e.message}`,true);b.disabled=false;b.textContent='Сохранить позицию';}
  });
  document.querySelectorAll('[data-item-archive]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-item-key]'), row=state.items.find(i=>i.item_key===c.dataset.itemKey); const {error}=await supabase.from('menu_items').update({archived:!row.archived,available:row.archived}).eq('item_key',row.item_key); if(error)return toast(error.message,true); await refresh(render);});
- document.querySelector('[data-add-section]')?.addEventListener('click',async()=>{const id=`section-${Date.now()}`; const {error}=await supabase.from('menu_sections').insert({section_id:id,type:'bar',title:'Новая категория',sort_order:999}); if(error)return toast(error.message,true); await refresh(render);});
+ document.querySelector('[data-add-section]')?.addEventListener('click',async()=>{const id=`section-${Date.now()}`; const {error}=await supabase.from('menu_sections').insert({section_id:id,type:'bar',title:'Новая категория',sort_order:-1000000}); if(error)return toast(error.message,true); await loadAll();render();requestAnimationFrame(()=>document.querySelector(`[data-section-id="${id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}));});
  document.querySelectorAll('[data-section-save]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-section-id]');const {error}=await supabase.from('menu_sections').update(readCard(c)).eq('section_id',c.dataset.sectionId);if(error)return toast(error.message,true);toast('Категория сохранена');await refresh(render);});
  document.querySelectorAll('[data-section-delete]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-section-id]');if(!confirm('Удалить категорию? Позиции останутся в базе.'))return;const {error}=await supabase.from('menu_sections').delete().eq('section_id',c.dataset.sectionId);if(error)return toast(error.message,true);await refresh(render);});
- document.querySelector('[data-add-promotion]')?.addEventListener('click',async()=>{const {error}=await supabase.from('promotions').insert({title:'Новая акция',sort_order:999});if(error)return toast(error.message,true);await refresh(render);});
+ document.querySelector('[data-add-promotion]')?.addEventListener('click',async()=>{const {data,error}=await supabase.from('promotions').insert({title:'Новая акция',visible:false,sort_order:-1000000}).select('id').single();if(error)return toast(error.message,true);await loadAll();render();requestAnimationFrame(()=>document.querySelector(`[data-promotion-id="${data.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}));});
  document.querySelectorAll('[data-promotion-save]').forEach(b=>b.onclick=async()=>{
   const c=b.closest('[data-promotion-id]'),v=readCard(c),file=c.querySelector('[data-promo-file]')?.files?.[0];
   try{
@@ -149,7 +190,7 @@ function bind(render){
   }catch(e){toast(`Не удалось сохранить: ${e.message}`,true);b.disabled=false;b.textContent='Сохранить';}
  });
  document.querySelectorAll('[data-promotion-delete]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-promotion-id]');if(!confirm('Удалить акцию?'))return;const {error}=await supabase.from('promotions').delete().eq('id',c.dataset.promotionId);if(error)return toast(error.message,true);await refresh(render);});
- document.querySelector('[data-add-rule]')?.addEventListener('click',async()=>{const {error}=await supabase.from('rules').insert({title:'Новое правило',sort_order:999});if(error)return toast(error.message,true);await refresh(render);});
+ document.querySelector('[data-add-rule]')?.addEventListener('click',async()=>{const {data,error}=await supabase.from('rules').insert({title:'Новое правило',visible:false,sort_order:-1000000}).select('id').single();if(error)return toast(error.message,true);await loadAll();render();requestAnimationFrame(()=>document.querySelector(`[data-rule-id="${data.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}));});
  document.querySelectorAll('[data-rule-save]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-rule-id]');const {error}=await supabase.from('rules').update(readCard(c)).eq('id',c.dataset.ruleId);if(error)return toast(error.message,true);toast('Правило сохранено');await refresh(render);});
  document.querySelectorAll('[data-rule-delete]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-rule-id]');if(!confirm('Удалить правило?'))return;const {error}=await supabase.from('rules').delete().eq('id',c.dataset.ruleId);if(error)return toast(error.message,true);await refresh(render);});
  document.querySelector('[data-venue-save]')?.addEventListener('click',async()=>{const c=document.querySelector('[data-venue]');const {error}=await supabase.from('venue_settings').update(readCard(c)).eq('id',1);if(error)return toast(error.message,true);toast('Настройки сохранены');await refresh(render);});
