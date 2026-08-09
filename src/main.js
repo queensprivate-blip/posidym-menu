@@ -138,6 +138,34 @@ let remotePromotions = null;
 let remoteRules = null;
 let remoteVenue = null;
 
+function syncRemoteOnlyItems(rows = []) {
+  barCategories.forEach((category) => { category.items = category.items.filter((item) => !item.__remoteOnly); });
+  for (let i = hookahItems.length - 1; i >= 0; i -= 1) if (hookahItems[i].__remoteOnly) hookahItems.splice(i, 1);
+
+  const knownKeys = new Set();
+  barCategories.forEach((category) => category.items.forEach((item) => knownKeys.add(item.remoteKey)));
+  hookahItems.forEach((item) => knownKeys.add(item.remoteKey));
+
+  rows.filter((row) => !row.archived).forEach((row) => {
+    if (knownKeys.has(row.item_key)) return;
+    const item = {
+      __remoteOnly: true,
+      remoteKey: row.item_key,
+      name: row.name,
+      description: row.description || '',
+      volume: row.volume || '',
+      price: Number(row.price) || 0,
+      image: row.image_url || '',
+    };
+    if (row.type === 'hookah') {
+      hookahItems.push(item);
+      return;
+    }
+    const category = barCategories.find((entry) => entry.id === row.section_id);
+    if (category) category.items.push(item);
+  });
+}
+
 
 function readAdminOverrides() {
   try {
@@ -766,6 +794,7 @@ async function loadRemoteMenu() {
     const { data, error } = await supabase.from('menu_items').select('*').order('sort_order');
     if (error) throw error;
     remoteMenuItems = new Map((data || []).map((row) => [row.item_key, row]));
+    syncRemoteOnlyItems(data || []);
     const [promoRes, rulesRes, venueRes] = await Promise.all([
       supabase.from('promotions').select('*').eq('visible', true).order('sort_order'),
       supabase.from('rules').select('*').eq('visible', true).order('sort_order'),
@@ -786,6 +815,10 @@ async function bootstrap() {
   adminSession = data.session;
   await loadRemoteMenu();
   window.addEventListener('hashchange', route);
+  window.addEventListener('posidym-menu-updated', async () => {
+    await loadRemoteMenu();
+    route();
+  });
   supabase.auth.onAuthStateChange((_event, session) => { adminSession = session; });
   route();
 }

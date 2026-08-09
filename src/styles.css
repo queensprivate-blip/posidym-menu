@@ -1956,3 +1956,17 @@ button { font: inherit; }
   border-color:#e6c775;
   box-shadow:0 0 0 3px rgba(217,184,109,.18);
 }
+
+
+/* v0.31 publication clarity */
+.admin-pro-card.is-draft .admin-field:has(input[data-f="available"]) {
+  padding:10px 12px;
+  border:1px solid rgba(98,216,144,.38);
+  border-radius:12px;
+  background:rgba(52,164,92,.10);
+}
+.admin-pro-card.is-draft .admin-field:has(input[data-f="available"]) > span::after {
+  content:" · будет опубликовано сразу";
+  color:#9cebb7;
+  font-weight:700;
+}

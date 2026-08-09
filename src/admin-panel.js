@@ -186,7 +186,7 @@ function bind(render){
     volume:'',
     price:0,
     image_url:null,
-    available:false,
+    available:true,
     archived:false,
     sort_order:0
   });
@@ -223,7 +223,8 @@ function bind(render){
       ({error}=await supabase.from('menu_items').update(values).eq('item_key',c.dataset.itemKey));
     }
     if(error)throw error;
-    toast(isDraft?'Позиция создана':file?'Фото загружено, позиция сохранена':'Позиция сохранена');
+    toast(isDraft?'Позиция создана и опубликована':file?'Фото загружено, позиция сохранена':'Позиция сохранена');
+    window.dispatchEvent(new CustomEvent('posidym-menu-updated'));
     await refresh(render);
   }catch(e){
     toast(`Не удалось сохранить: ${e.message}`,true);
@@ -231,7 +232,7 @@ function bind(render){
     b.textContent=isDraft?'Создать позицию':'Сохранить позицию';
   }
  });
- document.querySelectorAll('[data-item-archive]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-item-key]'), row=state.items.find(i=>i.item_key===c.dataset.itemKey); if(row?._draft){state.items=state.items.filter(i=>i.item_key!==row.item_key);render();toast('Черновик удалён');return;} const {error}=await supabase.from('menu_items').update({archived:!row.archived,available:row.archived}).eq('item_key',row.item_key); if(error)return toast(error.message,true); await refresh(render);});
+ document.querySelectorAll('[data-item-archive]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-item-key]'), row=state.items.find(i=>i.item_key===c.dataset.itemKey); if(row?._draft){state.items=state.items.filter(i=>i.item_key!==row.item_key);render();toast('Черновик удалён');return;} const {error}=await supabase.from('menu_items').update({archived:!row.archived,available:row.archived}).eq('item_key',row.item_key); if(error)return toast(error.message,true); window.dispatchEvent(new CustomEvent('posidym-menu-updated')); await refresh(render);});
  document.querySelector('[data-add-section]')?.addEventListener('click',async()=>{const id=`section-${Date.now()}`; const {error}=await supabase.from('menu_sections').insert({section_id:id,type:'bar',title:'Новая категория',sort_order:-1000000}); if(error)return toast(error.message,true); await loadAll();render();requestAnimationFrame(()=>document.querySelector(`[data-section-id="${id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}));});
  document.querySelectorAll('[data-section-save]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-section-id]');const {error}=await supabase.from('menu_sections').update(readCard(c)).eq('section_id',c.dataset.sectionId);if(error)return toast(error.message,true);toast('Категория сохранена');await refresh(render);});
  document.querySelectorAll('[data-section-delete]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-section-id]');if(!confirm('Удалить категорию? Позиции останутся в базе.'))return;const {error}=await supabase.from('menu_sections').delete().eq('section_id',c.dataset.sectionId);if(error)return toast(error.message,true);await refresh(render);});
