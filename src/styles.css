@@ -1776,4 +1776,147 @@ button { font: inherit; }
   .admin-field textarea{font-size:16px}
   .admin-primary{min-height:44px}
 }
-\n\n/* v0.26 explicit photo uploader */\n.admin-field:has(.admin-file-picker){grid-column:1/-1}\n.admin-file-picker{\n  display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:center;\n  padding:12px;border:1px solid rgba(255,255,255,.16);border-radius:16px;background:#08130f;\n}\n.admin-file-preview{\n  width:120px;height:92px;border-radius:13px;overflow:hidden;display:grid;place-items:center;\n  background:#030806;border:1px solid rgba(255,255,255,.12);color:#87938d;font-weight:750;\n}\n.admin-file-preview img{width:100%;height:100%;object-fit:cover;display:block}\n.admin-file-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}\n.admin-file-button{\n  border:1px solid rgba(217,184,109,.58);background:#d9b86d;color:#102019;\n  padding:11px 15px;border-radius:12px;font:inherit;font-weight:900;cursor:pointer;\n}\n.admin-file-button:hover{filter:brightness(1.08)}\n.admin-file-name{color:#d5ddd8;font-size:13px;font-weight:650;min-width:0;overflow-wrap:anywhere}\n.admin-primary:disabled,.admin-file-button:disabled{opacity:.6;cursor:wait;transform:none}\n@media(max-width:560px){\n  .admin-file-picker{grid-template-columns:82px minmax(0,1fr);padding:10px}\n  .admin-file-preview{width:82px;height:82px}\n  .admin-file-controls{align-items:flex-start;flex-direction:column}\n  .admin-file-button{width:100%}\n}\n
+
+
+/* v0.27 admin usability + contrast */
+.admin-shell::before,
+.admin-shell::after{display:none !important}
+
+.admin-shell{
+  --admin-gold:#e2bf70;
+  --admin-text:#ffffff;
+  --admin-muted:#d5ddd8;
+  --admin-green:#6ee79a;
+  --admin-red:#ff8e83;
+  background:
+    linear-gradient(rgba(2,9,6,.94),rgba(2,9,6,.975)),
+    var(--hero-image) center/cover fixed !important;
+  color:#fff;
+}
+
+.admin-top,
+.admin-tabs,
+.admin-tab-toolbar,
+.admin-actions-line,
+.admin-pro-card{
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+
+.admin-top{
+  background:#0b1712;
+  border-color:rgba(226,191,112,.38);
+  box-shadow:0 12px 34px rgba(0,0,0,.32);
+}
+.admin-top h1{color:#fff !important;text-shadow:none}
+.admin-top small{color:#e4bd67 !important}
+.admin-top button{color:#fff !important;background:#14231c;border-color:rgba(255,255,255,.20)}
+
+.admin-tabs{
+  background:#08130f;
+  border-color:rgba(255,255,255,.13);
+}
+.admin-tabs button{color:#dce4df;background:#12221b}
+.admin-tabs button.is-active{color:#102019;background:#e2bf70}
+
+.admin-tab-toolbar,
+.admin-actions-line{
+  background:#091510;
+  border-color:rgba(255,255,255,.14);
+}
+
+.admin-search-wrap{position:relative;display:flex;flex:1;min-width:260px}
+.admin-search-wrap input{width:100%;padding-right:44px}
+.admin-search-clear{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:32px;height:32px;border:0;border-radius:9px;background:#1a2a23;color:#fff;
+  font-size:22px;line-height:1;cursor:pointer
+}
+.admin-search-clear:hover{background:#263a31}
+.admin-search-count{
+  flex-basis:100%;color:#b8c4bd;font-size:12px;font-weight:700;padding:0 2px
+}
+
+.admin-tab-toolbar input,
+.admin-tab-toolbar select,
+.admin-field input,
+.admin-field select,
+.admin-field textarea{
+  background:#030b08 !important;
+  color:#fff !important;
+  border:1px solid rgba(226,191,112,.34) !important;
+  box-shadow:none !important;
+}
+.admin-tab-toolbar input::placeholder,
+.admin-field input::placeholder,
+.admin-field textarea::placeholder{color:#a8b4ad !important;opacity:1}
+.admin-tab-toolbar input:focus,
+.admin-tab-toolbar select:focus,
+.admin-field input:focus,
+.admin-field select:focus,
+.admin-field textarea:focus{
+  border-color:#e2bf70 !important;
+  box-shadow:0 0 0 3px rgba(226,191,112,.17) !important;
+  background:#07110d !important;
+}
+.admin-field > span{color:#e7ece9 !important;font-weight:800}
+.admin-pro-head small{color:#c1ccc6 !important}
+.admin-pro-head strong{color:#fff !important;font-size:18px}
+
+.admin-pro-card{
+  background:#0b1712 !important;
+  border-color:rgba(226,191,112,.26) !important;
+  box-shadow:0 12px 32px rgba(0,0,0,.28);
+}
+.admin-pro-card.is-live{border-left-color:#6ee79a !important}
+.admin-pro-card.is-stopped{border-left-color:#ff8e83 !important}
+.admin-pro-card.is-archived{border-left-color:#8a9690 !important}
+
+.admin-primary{
+  background:#e2bf70 !important;
+  color:#102019 !important;
+  border-color:#f0d28e !important;
+}
+.admin-danger-ghost{color:#ffb0a8 !important;background:#211513 !important;border-color:rgba(255,142,131,.38) !important}
+
+/* compact photo picker */
+.admin-field:has(.admin-file-picker){grid-column:1/-1}
+.admin-file-picker{
+  display:flex;align-items:center;gap:14px;
+  min-height:104px;padding:10px 12px;
+  border:1px solid rgba(226,191,112,.22);
+  border-radius:14px;background:#06100c;
+}
+.admin-file-preview{
+  flex:0 0 104px;width:104px;height:82px;max-width:104px;max-height:82px;
+  border-radius:11px;overflow:hidden;display:grid;place-items:center;
+  background:#020705;border:1px solid rgba(255,255,255,.14);color:#9eaaa3;font-weight:750
+}
+.admin-file-preview img{
+  display:block;width:100% !important;height:100% !important;max-width:104px !important;max-height:82px !important;
+  object-fit:cover !important;border-radius:0 !important;margin:0 !important
+}
+.admin-file-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.admin-file-button{
+  border:1px solid #e5c579;background:#e2bf70;color:#102019;
+  padding:10px 14px;border-radius:11px;font:inherit;font-weight:900;cursor:pointer
+}
+.admin-file-name{color:#dce4df;font-size:12px;font-weight:650;max-width:420px;overflow-wrap:anywhere}
+
+/* promotions should also stay compact in admin */
+.admin-banner-preview{
+  width:min(220px,100%) !important;height:150px !important;max-height:150px !important;
+  object-fit:cover !important;margin:0 0 12px !important
+}
+
+.admin-search-empty{grid-column:1/-1}
+
+@media(max-width:680px){
+  .admin-search-wrap{min-width:100%}
+  .admin-tab-toolbar select,.admin-tab-toolbar>.admin-primary{flex:1}
+  .admin-file-picker{align-items:flex-start}
+  .admin-file-preview{flex-basis:84px;width:84px;height:72px;max-width:84px;max-height:72px}
+  .admin-file-preview img{max-width:84px !important;max-height:72px !important}
+  .admin-file-controls{align-items:flex-start;flex-direction:column}
+  .admin-file-button{width:100%}
+}

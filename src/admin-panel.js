@@ -1,7 +1,13 @@
 import { supabase } from './supabase-client.js';
 
 const esc = (v='') => String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-const slug = (v='item') => String(v).toLowerCase().replace(/[^a-zа-я0-9]+/gi,'-').replace(/^-|-$/g,'').slice(0,60) || 'item';
+const normalizeSearch = (v='') => String(v).normalize('NFKC').toLowerCase().replaceAll('ё','е').replace(/[^a-zа-я0-9]+/gi,' ').trim().replace(/\s+/g,' ');
+const safeStorageExt = (file) => {
+  const byType = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/heic':'heic','image/heif':'heif'};
+  return byType[file?.type] || ((file?.name?.split('.').pop() || 'webp').toLowerCase().replace(/[^a-z0-9]/g,'') || 'webp');
+};
+const safeStorageId = () => (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2,12)}`).replace(/[^a-zA-Z0-9-]/g,'');
+const itemSearchText = (i) => normalizeSearch([i.name,i.section_title,i.type,i.volume,i.description,i.price].filter(v=>v!==null&&v!==undefined).join(' '));
 let state = { tab:'items', items:[], sections:[], promotions:[], rules:[], venue:null, query:'', type:'all' };
 
 async function loadAll(){
@@ -18,8 +24,8 @@ async function loadAll(){
 
 async function upload(file,folder='items'){
   if(!file) return null;
-  const ext=(file.name.split('.').pop()||'webp').toLowerCase();
-  const path=`${folder}/${Date.now()}-${slug(file.name)}.${ext}`;
+  const ext=safeStorageExt(file);
+  const path=`${folder}/${safeStorageId()}.${ext}`;
   const {error}=await supabase.storage.from('menu-media').upload(path,file,{cacheControl:'3600',upsert:false});
   if(error) throw error;
   return supabase.storage.from('menu-media').getPublicUrl(path).data.publicUrl;
@@ -41,8 +47,7 @@ function filePicker(inputAttr,currentUrl=''){
 function sectionOptions(selected=''){return state.sections.map(s=>`<option value="${esc(s.section_id)}" ${s.section_id===selected?'selected':''}>${esc(s.title)}</option>`).join('');}
 
 function itemRows(){
- const q=state.query.toLowerCase();
- return state.items.filter(i=>(state.type==='all'||i.type===state.type)&&(!q||`${i.name} ${i.section_title}`.toLowerCase().includes(q))).map(i=>`<article class="admin-pro-card ${i.archived?'is-archived':i.available?'is-live':'is-stopped'}" data-item-key="${esc(i.item_key)}">
+ return state.items.map(i=>`<article class="admin-pro-card ${i.archived?'is-archived':i.available?'is-live':'is-stopped'}" data-item-key="${esc(i.item_key)}" data-item-type="${esc(i.type)}" data-item-search="${esc(itemSearchText(i))}">
   <div class="admin-pro-head">${i.image_url?`<img src="${esc(i.image_url)}" alt="">`:'<span class="admin-photo-empty">Фото</span>'}<div><small>${esc(i.type)} · ${esc(i.section_title)}</small><strong>${esc(i.name)}</strong><span class="admin-state-pill ${i.archived?'is-archived':i.available?'is-live':'is-stopped'}">${i.archived?'Архив':i.available?'В меню':'Стоп-лист'}</span></div><button class="admin-danger-ghost" data-item-archive>${i.archived?'Восстановить':'Удалить'}</button></div>
   <div class="admin-form-grid">
    ${field('Название',`<input data-f="name" value="${esc(i.name)}">`)}
@@ -54,10 +59,11 @@ function itemRows(){
    ${field('Порядок',`<input data-f="sort_order" type="number" value="${esc(i.sort_order||0)}">`)}
    ${field('В меню',`<input data-f="available" type="checkbox" ${i.available&&!i.archived?'checked':''}>`)}
   </div><button class="admin-primary small" data-item-save>Сохранить позицию</button>
- </article>`).join('') || '<p class="admin-empty">Ничего не найдено.</p>';
+ </article>`).join('');
 }
 
-function itemsTab(){return `<div class="admin-tab-toolbar"><input placeholder="Поиск по меню" data-admin-search value="${esc(state.query)}"><select data-admin-type><option value="all">Все</option><option value="bar" ${state.type==='bar'?'selected':''}>Бар</option><option value="hookah" ${state.type==='hookah'?'selected':''}>Кальяны</option></select><button class="admin-primary" data-add-item>Добавить позицию</button></div><div class="admin-pro-list">${itemRows()}</div>`;}
+
+function itemsTab(){return `<div class="admin-tab-toolbar"><div class="admin-search-wrap"><input placeholder="Поиск по названию, разделу, описанию…" data-admin-search value="${esc(state.query)}"><button type="button" class="admin-search-clear" data-admin-search-clear aria-label="Очистить поиск" ${state.query?'':'hidden'}>×</button></div><select data-admin-type><option value="all">Все</option><option value="bar" ${state.type==='bar'?'selected':''}>Бар</option><option value="hookah" ${state.type==='hookah'?'selected':''}>Кальяны</option></select><button class="admin-primary" data-add-item>Добавить позицию</button><span class="admin-search-count" data-admin-search-count></span></div><div class="admin-pro-list">${itemRows()}<p class="admin-empty admin-search-empty" data-admin-search-empty hidden>Ничего не найдено.</p></div>`;}
 function sectionsTab(){return `<div class="admin-actions-line"><button class="admin-primary" data-add-section>Добавить категорию</button></div><div class="admin-pro-list">${state.sections.map(s=>`<article class="admin-pro-card" data-section-id="${esc(s.section_id)}"><div class="admin-form-grid">${field('Название',`<input data-f="title" value="${esc(s.title)}">`)}${field('Описание',`<input data-f="note" value="${esc(s.note||'')}">`)}${field('Тип',`<select data-f="type"><option value="bar" ${s.type==='bar'?'selected':''}>Бар</option><option value="hookah" ${s.type==='hookah'?'selected':''}>Кальяны</option></select>`)}${field('Группа',`<input data-f="parent_group" value="${esc(s.parent_group||'')}">`)}${field('Порядок',`<input data-f="sort_order" type="number" value="${s.sort_order||0}">`)}${field('Показывать',`<input data-f="visible" type="checkbox" ${s.visible?'checked':''}>`)}</div><div class="admin-card-actions"><button class="admin-primary small" data-section-save>Сохранить</button><button class="admin-danger-ghost" data-section-delete>Удалить</button></div></article>`).join('')}</div>`;}
 function promotionsTab(){return `<div class="admin-actions-line"><button class="admin-primary" data-add-promotion>Добавить акцию</button></div><div class="admin-pro-list">${state.promotions.map(p=>`<article class="admin-pro-card" data-promotion-id="${p.id}">${p.image_url?`<img class="admin-banner-preview" src="${esc(p.image_url)}" alt="">`:''}<div class="admin-form-grid">${field('Название',`<input data-f="title" value="${esc(p.title)}">`)}${field('Метка',`<input data-f="type_label" value="${esc(p.type_label||'Акция')}">`)}${field('Текст',`<textarea data-f="text">${esc(p.text||'')}</textarea>`)}${field('Изображение',filePicker('data-promo-file',p.image_url||''))}${field('Порядок',`<input data-f="sort_order" type="number" value="${p.sort_order||0}">`)}${field('Показывать',`<input data-f="visible" type="checkbox" ${p.visible?'checked':''}>`)}</div><div class="admin-card-actions"><button class="admin-primary small" data-promotion-save>Сохранить</button><button class="admin-danger-ghost" data-promotion-delete>Удалить</button></div></article>`).join('')}</div>`;}
 function rulesTab(){return `<div class="admin-actions-line"><button class="admin-primary" data-add-rule>Добавить правило</button></div><div class="admin-pro-list">${state.rules.map(r=>`<article class="admin-pro-card" data-rule-id="${r.id}"><div class="admin-form-grid">${field('Заголовок',`<input data-f="title" value="${esc(r.title)}">`)}${field('Текст',`<textarea data-f="text">${esc(r.text||'')}</textarea>`)}${field('Порядок',`<input data-f="sort_order" type="number" value="${r.sort_order||0}">`)}${field('Показывать',`<input data-f="visible" type="checkbox" ${r.visible?'checked':''}>`)}</div><div class="admin-card-actions"><button class="admin-primary small" data-rule-save>Сохранить</button><button class="admin-danger-ghost" data-rule-delete>Удалить</button></div></article>`).join('')}</div>`;}
@@ -67,10 +73,32 @@ function body(){return ({items:itemsTab,sections:sectionsTab,promotions:promotio
 function readCard(card){const o={}; card.querySelectorAll('[data-f]').forEach(el=>{o[el.dataset.f]=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value.trim();}); return o;}
 async function refresh(render){await loadAll(); render();}
 
+function applyItemFilters(){
+ const q=normalizeSearch(state.query);
+ const cards=[...document.querySelectorAll('[data-item-key]')];
+ let shown=0;
+ cards.forEach(card=>{
+  const typeOk=state.type==='all'||card.dataset.itemType===state.type;
+  const hay=card.dataset.itemSearch||'';
+  const queryOk=!q||q.split(' ').every(part=>hay.includes(part));
+  const visible=typeOk&&queryOk;
+  card.hidden=!visible;
+  if(visible)shown++;
+ });
+ const empty=document.querySelector('[data-admin-search-empty]');
+ if(empty) empty.hidden=shown!==0;
+ const count=document.querySelector('[data-admin-search-count]');
+ if(count) count.textContent=`Показано: ${shown} из ${cards.length}`;
+ const clear=document.querySelector('[data-admin-search-clear]');
+ if(clear) clear.hidden=!state.query;
+}
+
 function bind(render){
  document.querySelectorAll('[data-admin-tab]').forEach(b=>b.onclick=()=>{state.tab=b.dataset.adminTab;render();});
- document.querySelector('[data-admin-search]')?.addEventListener('input',e=>{state.query=e.target.value;render();});
- document.querySelector('[data-admin-type]')?.addEventListener('change',e=>{state.type=e.target.value;render();});
+ const searchInput=document.querySelector('[data-admin-search]');
+ searchInput?.addEventListener('input',e=>{state.query=e.target.value;applyItemFilters();});
+ document.querySelector('[data-admin-search-clear]')?.addEventListener('click',()=>{state.query='';if(searchInput){searchInput.value='';searchInput.focus();}applyItemFilters();});
+ document.querySelector('[data-admin-type]')?.addEventListener('change',e=>{state.type=e.target.value;applyItemFilters();});
  document.querySelector('[data-admin-logout]')?.addEventListener('click',async()=>{await supabase.auth.signOut();location.hash='#home';location.reload();});
  document.querySelectorAll('[data-file-picker]').forEach(picker=>{
   const input=picker.querySelector('[data-file-input]');
@@ -125,6 +153,7 @@ function bind(render){
  document.querySelectorAll('[data-rule-save]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-rule-id]');const {error}=await supabase.from('rules').update(readCard(c)).eq('id',c.dataset.ruleId);if(error)return toast(error.message,true);toast('Правило сохранено');await refresh(render);});
  document.querySelectorAll('[data-rule-delete]').forEach(b=>b.onclick=async()=>{const c=b.closest('[data-rule-id]');if(!confirm('Удалить правило?'))return;const {error}=await supabase.from('rules').delete().eq('id',c.dataset.ruleId);if(error)return toast(error.message,true);await refresh(render);});
  document.querySelector('[data-venue-save]')?.addEventListener('click',async()=>{const c=document.querySelector('[data-venue]');const {error}=await supabase.from('venue_settings').update(readCard(c)).eq('id',1);if(error)return toast(error.message,true);toast('Настройки сохранены');await refresh(render);});
+ if(state.tab==='items') applyItemFilters();
 }
 
 export async function renderAdvancedAdmin(app,{session,backgroundUrl,logoUrl}){
