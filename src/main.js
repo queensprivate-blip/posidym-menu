@@ -529,8 +529,8 @@ function home() {
       <button class="brand-trigger" type="button" data-venue-open aria-label="Открыть информацию о заведении">
         <img class="brand-logo" src="${logoUrl}" alt="Посидым Lounge">
         <span class="brand-callout" aria-hidden="true">
-          <svg viewBox="0 0 76 28"><path d="M72 18c-10 0-14-1-22-6-8-5-13-8-24-8H8"/><path d="M14 3 4 12l10 9"/></svg>
-          <span>Информация</span>
+          <span class="brand-callout-icon">i</span>
+          <span class="brand-callout-copy">Информация о заведении</span>
         </span>
       </button>
 
