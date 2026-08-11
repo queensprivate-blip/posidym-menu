@@ -18,6 +18,7 @@ const venue = {
   phone: '+7 (999) 123-45-67',
   hours: 'Вс–Чт 14:00–02:00 · Пт–Сб 14:00–04:00',
   reviewUrl: 'https://yandex.ru/maps/213/moscow/?ll=37.698523%2C55.750618&mode=poi&poi%5Bpoint%5D=37.697811%2C55.751194&poi%5Buri%5D=ymapsbm1%3A%2F%2Forg%3Foid%3D245377761010&tab=reviews&z=18.12',
+  telegramUrl: 'https://t.me/posidym',
 };
 
 const categoryById = Object.fromEntries(barCategories.map((category) => [category.id, category]));
@@ -527,6 +528,10 @@ function home() {
     <section class="home-content">
       <button class="brand-trigger" type="button" data-venue-open aria-label="Открыть информацию о заведении">
         <img class="brand-logo" src="${logoUrl}" alt="Посидым Lounge">
+        <span class="brand-callout" aria-hidden="true">
+          <svg viewBox="0 0 76 28"><path d="M72 18c-10 0-14-1-22-6-8-5-13-8-24-8H8"/><path d="M14 3 4 12l10 9"/></svg>
+          <span>Информация</span>
+        </span>
       </button>
 
       <nav class="home-menu" aria-label="Разделы меню">
@@ -568,6 +573,12 @@ function home() {
             <div>
               <span>Режим работы</span><strong>${esc((remoteVenue?.hours || venue.hours))}</strong>
             </div>
+            <div>
+              <span>Правила посещения</span><strong>Посещение заведения допускается только для гостей 18+.</strong>
+            </div>
+            <a href="${esc(venue.telegramUrl)}" target="_blank" rel="noopener noreferrer">
+              <span>Telegram-канал</span><strong>@posidym</strong>
+            </a>
           </div>
         </div>
       </dialog>
