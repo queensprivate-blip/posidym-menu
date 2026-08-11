@@ -2022,3 +2022,22 @@ button { font: inherit; }
   .brand-callout { padding: 7px 12px; gap: 8px; }
   .brand-callout-copy { font-size: 9px; letter-spacing: 0.14em; }
 }
+
+
+/* v0.35 — center the final tile when a two-column menu has an odd count */
+@media (min-width: 680px) {
+  .category-list > .category-card:last-child:nth-child(odd),
+  .promotion-grid > .promotion-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    width: calc(50% - 6px);
+    justify-self: center;
+  }
+}
+
+@media (min-width: 720px) {
+  .product-list > .product-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    width: calc(50% - 6px);
+    justify-self: center;
+  }
+}
