@@ -662,7 +662,6 @@ function categoryPage(sectionKey, categoryId) {
     <section class="inner-content category-page compact-top">
       ${quickNavigation}
       ${groupedContent}
-      <p class="menu-disclaimer">Позиции, цены и доступные фотографии перенесены из действующего электронного меню.</p>
     </section>`, { title: category.title, eyebrow: section.title });
 }
 

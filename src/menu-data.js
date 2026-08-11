@@ -1050,6 +1050,6 @@ export const importedPromotions = [
     "type": "Акция",
     "title": "Скидка в день рождения",
     "text": "Сообщи персоналу, что сегодня у тебя День Рождения и получи скидку 15% (действует при предъявлении документа, удостоверяющего личность).",
-    "image": "/menu-images/product-cocwbnqtdp-jdwyexrhvb.webp"
+    "image": "/menu-images/birthday-discount-v34.webp?v=34"
   }
 ];
